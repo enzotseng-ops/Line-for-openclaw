@@ -2,8 +2,9 @@ const db = require('../config/db');
 const { encrypt } = require('../config/encryption');
 const { testConnection } = require('../services/llm/factory');
 const logger = require('../config/logger');
+const line = require('@line/bot-sdk');
 
-const { invalidate } = require('../services/settings.service');
+const { invalidate, getSetting } = require('../services/settings.service');
 
 const ENCRYPTED_KEYS = ['llm_api_key', 'google_file_search_api_key', 'line_channel_secret', 'line_channel_access_token'];
 
@@ -68,4 +69,38 @@ async function testLLM(req, res, next) {
   }
 }
 
-module.exports = { list, updateOne, testLLM };
+async function testLine(req, res, next) {
+  try {
+    const token = await getSetting('line_channel_access_token');
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Channel Access Token 尚未設定' });
+    }
+
+    const secret = await getSetting('line_channel_secret');
+    if (!secret) {
+      return res.status(400).json({ success: false, error: 'Channel Secret 尚未設定' });
+    }
+
+    const client = new line.messagingApi.MessagingApiClient({ channelAccessToken: token });
+    const botInfo = await client.getBotInfo();
+
+    res.json({
+      success: true,
+      bot: {
+        displayName: botInfo.displayName,
+        userId: botInfo.userId,
+        pictureUrl: botInfo.pictureUrl,
+        chatMode: botInfo.chatMode,
+        markAsReadMode: botInfo.markAsReadMode,
+      },
+    });
+  } catch (err) {
+    logger.error('LINE test failed:', err.message);
+    const msg = err.statusCode === 401
+      ? 'Channel Access Token 無效，請確認是否正確'
+      : `LINE API 錯誤: ${err.message}`;
+    res.status(400).json({ success: false, error: msg });
+  }
+}
+
+module.exports = { list, updateOne, testLLM, testLine };

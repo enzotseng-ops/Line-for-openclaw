@@ -241,6 +241,38 @@ export default function Settings() {
           <SaveBtn onClick={() => updateSetting('max_message_length', settings.max_message_length)} saving={saving.max_message_length} />
         </Field>
         <p className="text-xs text-gray-400 -mt-2">超過此長度的訊息將不處理，直接回覆「訊息太長」</p>
+
+        <div className="border-t border-gray-100 pt-4 mt-2">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">速率限制 (Rate Limiting)</h3>
+          <p className="text-xs text-gray-400 mb-3">限制單一使用者在時間窗口內可觸發的 AI 回覆次數，防止濫用造成 Token 爆量。設為 0 則不限制。</p>
+          <Field label="時間窗口（分鐘）">
+            <input
+              type="number"
+              min="1"
+              max="1440"
+              value={settings.rate_limit_window_minutes || '5'}
+              onChange={(e) => setSettings((prev) => ({ ...prev, rate_limit_window_minutes: e.target.value }))}
+              placeholder="5"
+              className="input-field flex-1"
+            />
+            <SaveBtn onClick={() => updateSetting('rate_limit_window_minutes', settings.rate_limit_window_minutes)} saving={saving.rate_limit_window_minutes} />
+          </Field>
+          <Field label="最大 AI 回覆數">
+            <input
+              type="number"
+              min="0"
+              max="1000"
+              value={settings.rate_limit_max_messages || '10'}
+              onChange={(e) => setSettings((prev) => ({ ...prev, rate_limit_max_messages: e.target.value }))}
+              placeholder="10"
+              className="input-field flex-1"
+            />
+            <SaveBtn onClick={() => updateSetting('rate_limit_max_messages', settings.rate_limit_max_messages)} saving={saving.rate_limit_max_messages} />
+          </Field>
+          <p className="text-xs text-gray-400 -mt-2">
+            預設：每 5 分鐘最多 10 則 AI 回覆。超過則回覆「您發送訊息太頻繁」。
+          </p>
+        </div>
       </Section>
 
       {/* LLM Settings */}

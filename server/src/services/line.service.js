@@ -7,6 +7,7 @@ const { generateReply, getLLMSettings } = require('./llm/factory');
 const { searchContext } = require('./rag.service');
 const { isWithinSchedule } = require('./scheduler.service');
 const { getSetting } = require('./settings.service');
+const { checkRateLimit } = require('./rateLimit.service');
 
 async function getLineClient() {
   const token = await getSetting('line_channel_access_token');
@@ -162,6 +163,23 @@ async function handleMessageEvent(event) {
   const aiEnabled = await shouldAIReply(lineUser);
   logger.info(`AI reply check: user=${lineUserId}, mode=${lineUser.mode}, active=${lineUser.is_active}, result=${aiEnabled}`);
   if (!aiEnabled) {
+    return;
+  }
+
+  // Rate limit check
+  const rateCheck = await checkRateLimit(lineUserId);
+  if (!rateCheck.allowed) {
+    try {
+      await client.replyMessage({
+        replyToken,
+        messages: [{
+          type: 'text',
+          text: `您發送訊息太頻繁，請 ${rateCheck.windowMinutes} 分鐘後再試。（上限：每 ${rateCheck.windowMinutes} 分鐘 ${rateCheck.max} 則）`,
+        }],
+      });
+    } catch (err) {
+      logger.logError('LINE reply error (rate limit)', err);
+    }
     return;
   }
 

@@ -63,6 +63,8 @@ export default function Settings() {
   const [lineTestResult, setLineTestResult] = useState(null);
   const [lineTesting, setLineTesting] = useState(false);
   const [showLineTutorial, setShowLineTutorial] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
     api.get('/settings').then((res) => {
@@ -116,6 +118,29 @@ export default function Settings() {
     }
   }, []);
 
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+    if (!currentPassword || !newPassword) {
+      return toast.error('請輸入目前密碼和新密碼');
+    }
+    if (newPassword.length < 8) {
+      return toast.error('新密碼至少需要 8 個字元');
+    }
+    if (newPassword !== confirmPassword) {
+      return toast.error('新密碼與確認密碼不一致');
+    }
+    setPasswordSaving(true);
+    try {
+      await api.put('/auth/password', { currentPassword, newPassword });
+      toast.success('密碼已更新');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.error || '密碼更新失敗');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   const productionWebhookUrl = 'https://line-bot.openclaw-gb.com/api/webhook/line';
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const webhookUrl = isLocalDev ? productionWebhookUrl : `${window.location.origin}/api/webhook/line`;
@@ -148,6 +173,44 @@ export default function Settings() {
           />
           <SaveBtn onClick={() => updateSetting('site_subtitle', settings.site_subtitle)} saving={saving.site_subtitle} />
         </Field>
+      </Section>
+
+      {/* Password Change */}
+      <Section title="修改密碼">
+        <Field label="目前密碼">
+          <input
+            type="password"
+            value={passwordForm.currentPassword}
+            onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+            placeholder="輸入目前密碼"
+            className="input-field flex-1"
+          />
+        </Field>
+        <Field label="新密碼">
+          <input
+            type="password"
+            value={passwordForm.newPassword}
+            onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+            placeholder="至少 8 個字元"
+            className="input-field flex-1"
+          />
+        </Field>
+        <Field label="確認新密碼">
+          <input
+            type="password"
+            value={passwordForm.confirmPassword}
+            onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+            placeholder="再次輸入新密碼"
+            className="input-field flex-1"
+          />
+        </Field>
+        <button
+          onClick={handleChangePassword}
+          disabled={passwordSaving}
+          className="px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 disabled:opacity-50 mt-1"
+        >
+          {passwordSaving ? '更新中...' : '更新密碼'}
+        </button>
       </Section>
 
       {/* Chat Settings */}

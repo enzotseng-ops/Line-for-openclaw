@@ -58,4 +58,36 @@ async function me(req, res, next) {
   }
 }
 
-module.exports = { register, login, me };
+async function changePassword(req, res, next) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: '請輸入目前密碼和新密碼' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: '新密碼至少需要 8 個字元' });
+    }
+
+    const user = await db('users').where({ id: req.user.id }).first();
+    if (!user) {
+      return res.status(404).json({ error: '找不到使用者' });
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: '目前密碼不正確' });
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    await db('users').where({ id: req.user.id }).update({
+      password_hash,
+      updated_at: new Date(),
+    });
+
+    res.json({ success: true, message: '密碼已更新' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, login, me, changePassword };

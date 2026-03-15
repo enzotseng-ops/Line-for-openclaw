@@ -26,13 +26,17 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const clearPasswordChangeFlag = () => {
+    setUser((prev) => prev ? { ...prev, requiresPasswordChange: false } : prev);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, clearPasswordChangeFlag }}>
       {children}
     </AuthContext.Provider>
   );

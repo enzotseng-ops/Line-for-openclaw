@@ -11,6 +11,7 @@ import Messages from './pages/Messages';
 import Schedules from './pages/Schedules';
 import Knowledge from './pages/Knowledge';
 import Settings from './pages/Settings';
+import ChangePassword from './pages/ChangePassword';
 import api from './services/api';
 
 function PrivateRoute({ children }) {
@@ -21,6 +22,7 @@ function PrivateRoute({ children }) {
     </div>
   );
   if (!user) return <Navigate to="/login" replace />;
+  if (user.requiresPasswordChange) return <Navigate to="/change-password" replace />;
   return <Layout>{children}</Layout>;
 }
 
@@ -52,6 +54,7 @@ export default function App() {
         <Routes>
           <Route path="/setup" element={<Setup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/users" element={<PrivateRoute><Users /></PrivateRoute>} />
           <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />

@@ -45,7 +45,15 @@ async function login(req, res, next) {
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ user: { id: user.id, email: user.email, name: user.name }, token });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        requiresPasswordChange: !!user.requires_password_change,
+      },
+      token,
+    });
   } catch (err) {
     next(err);
   }
@@ -53,9 +61,15 @@ async function login(req, res, next) {
 
 async function me(req, res, next) {
   try {
-    const user = await db('users').where({ id: req.user.id }).select('id', 'email', 'name', 'created_at').first();
+    const user = await db('users').where({ id: req.user.id }).select('id', 'email', 'name', 'requires_password_change', 'created_at').first();
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      requiresPasswordChange: !!user.requires_password_change,
+      created_at: user.created_at,
+    });
   } catch (err) {
     next(err);
   }
@@ -84,6 +98,7 @@ async function changePassword(req, res, next) {
     const password_hash = await bcrypt.hash(newPassword, 10);
     await db('users').where({ id: req.user.id }).update({
       password_hash,
+      requires_password_change: false,
       updated_at: new Date(),
     });
 

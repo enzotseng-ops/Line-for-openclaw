@@ -13,6 +13,7 @@ const ENCRYPTED_KEYS = ['llm_api_key', 'google_file_search_api_key', 'line_chann
 const ENV_FALLBACKS = {
   line_channel_secret: 'LINE_CHANNEL_SECRET',
   line_channel_access_token: 'LINE_CHANNEL_ACCESS_TOKEN',
+  google_file_search_api_key: 'GOOGLE_AI_API_KEY',
 };
 
 /**

@@ -1,22 +1,20 @@
 const { GoogleGenAI } = require('@google/genai');
-const db = require('../config/db');
-const { decrypt } = require('../config/encryption');
+const { getSetting } = require('./settings.service');
 const logger = require('../config/logger');
 
 const GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const RAG_MODEL = 'gemini-2.5-flash-lite';
 
 async function getRAGSettings() {
-  const rows = await db('system_settings')
-    .whereIn('key', ['google_file_search_api_key', 'google_assistant_id']);
-
-  const settings = {};
-  rows.forEach((r) => { settings[r.key] = r.value; });
+  const [apiKey, fileSearchStoreName] = await Promise.all([
+    getSetting('google_file_search_api_key'),
+    getSetting('google_assistant_id'),
+  ]);
 
   return {
-    apiKey: decrypt(settings.google_file_search_api_key || ''),
+    apiKey: apiKey || '',
     // google_assistant_id stores the File Search Store name, e.g. "fileSearchStores/my-store-123"
-    fileSearchStoreName: settings.google_assistant_id || '',
+    fileSearchStoreName: fileSearchStoreName || '',
   };
 }
 
@@ -82,7 +80,7 @@ async function searchContextDetailed(query) {
 
     return { hit, context: contextText, citations };
   } catch (err) {
-    logger.error('RAG search error:', err.message);
+    logger.logError('RAG search error', err);
     return { hit: false, context: null, citations: [], reason: err.message };
   }
 }
@@ -141,7 +139,7 @@ async function deleteFile(documentName) {
     });
     logger.info(`Deleted Google File Search document: ${documentName}`);
   } catch (err) {
-    logger.error('RAG delete file error:', err.message);
+    logger.logError('RAG delete file error', err);
   }
 }
 

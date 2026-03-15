@@ -1,5 +1,4 @@
-const db = require('../../config/db');
-const { decrypt } = require('../../config/encryption');
+const { getSetting } = require('../settings.service');
 const claudeProvider = require('./claude.provider');
 const openaiProvider = require('./openai.provider');
 const customProvider = require('./custom.provider');
@@ -11,20 +10,20 @@ const PROVIDER_BASE_URLS = {
 };
 
 async function getLLMSettings() {
-  const rows = await db('system_settings')
-    .whereIn('key', ['llm_provider', 'llm_api_key', 'llm_model', 'system_prompt', 'custom_llm_base_url']);
-
-  const settings = {};
-  rows.forEach((r) => {
-    settings[r.key] = r.value;
-  });
+  const [provider, apiKey, model, systemPrompt, baseUrl] = await Promise.all([
+    getSetting('llm_provider'),
+    getSetting('llm_api_key'),
+    getSetting('llm_model'),
+    getSetting('system_prompt'),
+    getSetting('custom_llm_base_url'),
+  ]);
 
   return {
-    provider: settings.llm_provider || 'claude',
-    apiKey: decrypt(settings.llm_api_key || ''),
-    model: settings.llm_model || 'claude-sonnet-4-5',
-    systemPrompt: settings.system_prompt || '你是一個智能客服助理。',
-    baseUrl: settings.custom_llm_base_url || '',
+    provider: provider || 'claude',
+    apiKey: apiKey || '',
+    model: model || 'claude-sonnet-4-5',
+    systemPrompt: systemPrompt || '你是一個智能客服助理。',
+    baseUrl: baseUrl || '',
   };
 }
 

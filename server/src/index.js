@@ -3,15 +3,29 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
+
+// Ensure upload directories exist
+fs.mkdirSync(path.join(__dirname, '../uploads/knowledge'), { recursive: true });
 
 const app = express();
 
 // Security headers
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow no-origin (curl, Postman) and common dev ports
+    const allowed = [
+      process.env.CLIENT_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 

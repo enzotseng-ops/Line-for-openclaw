@@ -1,10 +1,14 @@
 const crypto = require('crypto');
 const { handleMessageEvent } = require('../services/line.service');
+const { getSetting } = require('../services/settings.service');
 const logger = require('../config/logger');
 
-function verifySignature(body, signature) {
-  const channelSecret = process.env.LINE_CHANNEL_SECRET;
-  if (!channelSecret) return false;
+async function verifySignature(body, signature) {
+  const channelSecret = await getSetting('line_channel_secret');
+  if (!channelSecret) {
+    logger.warn('LINE_CHANNEL_SECRET not configured');
+    return false;
+  }
   const hash = crypto
     .createHmac('sha256', channelSecret)
     .update(body)
@@ -16,7 +20,7 @@ async function handleWebhook(req, res) {
   const signature = req.headers['x-line-signature'];
   const rawBody = req.rawBody;
 
-  if (!verifySignature(rawBody, signature)) {
+  if (!(await verifySignature(rawBody, signature))) {
     logger.warn('Invalid LINE signature');
     return res.status(401).json({ error: 'Invalid signature' });
   }

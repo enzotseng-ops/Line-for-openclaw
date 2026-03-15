@@ -3,7 +3,9 @@ const { encrypt } = require('../config/encryption');
 const { testConnection } = require('../services/llm/factory');
 const logger = require('../config/logger');
 
-const ENCRYPTED_KEYS = ['llm_api_key', 'google_file_search_api_key'];
+const { invalidate } = require('../services/settings.service');
+
+const ENCRYPTED_KEYS = ['llm_api_key', 'google_file_search_api_key', 'line_channel_secret', 'line_channel_access_token'];
 
 async function list(req, res, next) {
   try {
@@ -46,6 +48,9 @@ async function updateOne(req, res, next) {
     } else {
       await db('system_settings').where({ key }).update({ value, updated_at: new Date() });
     }
+
+    // Invalidate settings cache so new value is used immediately
+    invalidate(key);
 
     res.json({ key, updated: true });
   } catch (err) {

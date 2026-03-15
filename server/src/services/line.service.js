@@ -6,16 +6,19 @@ const logger = require('../config/logger');
 const { generateReply, getLLMSettings } = require('./llm/factory');
 const { searchContext } = require('./rag.service');
 const { isWithinSchedule } = require('./scheduler.service');
+const { getSetting } = require('./settings.service');
 
-function getLineClient() {
+async function getLineClient() {
+  const token = await getSetting('line_channel_access_token');
   return new line.messagingApi.MessagingApiClient({
-    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    channelAccessToken: token,
   });
 }
 
-function getLineBlobClient() {
+async function getLineBlobClient() {
+  const token = await getSetting('line_channel_access_token');
   return new line.messagingApi.MessagingApiBlobClient({
-    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    channelAccessToken: token,
   });
 }
 
@@ -23,7 +26,7 @@ function getLineBlobClient() {
  * Download media from LINE and save locally
  */
 async function downloadMedia(messageId, lineUserId, messageType) {
-  const blobClient = getLineBlobClient();
+  const blobClient = await getLineBlobClient();
   const stream = await blobClient.getMessageContent(messageId);
 
   const extMap = { image: 'jpg', video: 'mp4', audio: 'm4a', file: 'bin' };
@@ -100,7 +103,7 @@ async function handleMessageEvent(event) {
   const lineUserId = source.userId;
 
   // Get user profile
-  const client = getLineClient();
+  const client = await getLineClient();
   let profile;
   try {
     profile = await client.getProfile(lineUserId);
@@ -142,14 +145,14 @@ async function handleMessageEvent(event) {
     return;
   }
 
-  // Get conversation history
+  // Get the last 20 text messages (both inbound & outbound) for this user as conversation context
   const history = await db('messages')
     .where({ line_user_id: lineUserId })
     .whereIn('message_type', ['text'])
     .orderBy('created_at', 'desc')
     .limit(20);
 
-  history.reverse();
+  history.reverse(); // chronological order for LLM context
 
   // RAG search
   const ragContext = await searchContext(message.text);

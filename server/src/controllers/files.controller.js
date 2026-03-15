@@ -21,7 +21,9 @@ async function upload(req, res, next) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { originalname, path: storedPath, size, mimetype } = req.file;
+    // multer encodes filename as latin1; convert back to UTF-8 for Chinese filenames
+    const originalname = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    const { path: storedPath, size, mimetype } = req.file;
 
     const [record] = await db('uploaded_files').insert({
       original_name: originalname,

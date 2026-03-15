@@ -20,7 +20,7 @@ export default function Users() {
       setUsers(res.data.users);
       setPagination(res.data.pagination);
     } catch (err) {
-      toast.error('載入失敗');
+      toast.error('載入失敗', { id: 'users-fetch-error' });
     } finally {
       setLoading(false);
     }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@google/genai": "^1.45.0",
     "@line/bot-sdk": "^9.3.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

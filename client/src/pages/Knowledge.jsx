@@ -13,6 +13,111 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function TestQueryPanel() {
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [showRagContext, setShowRagContext] = useState(false);
+
+  const handleTest = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setResult(null);
+    setShowRagContext(false);
+    try {
+      const res = await api.post('/files/test-query', { query: query.trim() });
+      setResult(res.data);
+    } catch (err) {
+      toast.error('測試失敗: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTest();
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <h2 className="font-semibold text-gray-800">🔍 測試查詢</h2>
+      <p className="text-sm text-gray-500">輸入問題，測試是否命中知識庫（RAG），並查看 AI 最終回答。</p>
+
+      <div className="flex gap-2">
+        <textarea
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="輸入測試問題，例如：退換貨政策是什麼？"
+          rows={2}
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button
+          onClick={handleTest}
+          disabled={loading || !query.trim()}
+          className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 disabled:opacity-50 self-start"
+        >
+          {loading ? '查詢中...' : '測試'}
+        </button>
+      </div>
+
+      {result && (
+        <div className="space-y-3 pt-1">
+          {/* RAG Hit/Miss Badge */}
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
+              result.ragHit ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}>
+              {result.ragHit ? '✅ 命中知識庫' : '❌ 未命中知識庫（LLM 直接回答）'}
+            </span>
+            <span className="text-xs text-gray-400">provider: {result.provider} | model: {result.model}</span>
+          </div>
+
+          {/* RAG Context (collapsible) */}
+          {result.ragHit && (
+            <div className="border border-green-200 rounded-lg overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-4 py-2 bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100"
+                onClick={() => setShowRagContext((v) => !v)}
+              >
+                <span>📄 知識庫命中內容 {result.ragCitations?.length > 0 && `（引用 ${result.ragCitations.length} 個片段）`}</span>
+                <span>{showRagContext ? '▲' : '▼'}</span>
+              </button>
+              {showRagContext && (
+                <div className="px-4 py-3 bg-green-50 text-xs text-gray-700 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono border-t border-green-200">
+                  {result.ragContext}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No RAG reason */}
+          {!result.ragHit && result.ragReason && (
+            <p className="text-xs text-gray-400">原因：{result.ragReason}</p>
+          )}
+
+          {/* AI Response */}
+          <div className="border border-blue-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-2 bg-blue-50 text-sm font-medium text-blue-700">
+              🤖 AI 回答
+              {result.ragHit
+                ? <span className="ml-2 text-xs font-normal text-blue-500">（根據知識庫內容回答）</span>
+                : <span className="ml-2 text-xs font-normal text-blue-500">（根據模型訓練資料回答）</span>
+              }
+            </div>
+            <div className="px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap bg-white">
+              {result.response}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Knowledge() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,18 +125,26 @@ export default function Knowledge() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (silent = false) => {
     try {
       const res = await api.get('/files');
       setFiles(res.data);
     } catch (err) {
-      toast.error('載入失敗');
+      if (!silent) toast.error('載入失敗');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { fetchFiles(); }, []);
+
+  // Auto-poll while any file is still processing
+  useEffect(() => {
+    const hasProcessing = files.some((f) => f.status === 'processing');
+    if (!hasProcessing) return;
+    const timer = setInterval(() => fetchFiles(true), 3000);
+    return () => clearInterval(timer);
+  }, [files]);
 
   const uploadFile = async (file) => {
     const formData = new FormData();
@@ -135,6 +248,9 @@ export default function Knowledge() {
           </tbody>
         </table>
       </div>
+
+      {/* Test Query Panel */}
+      <TestQueryPanel />
     </div>
   );
 }

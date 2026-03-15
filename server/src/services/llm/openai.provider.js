@@ -21,7 +21,9 @@ function buildMessages(userMessage, conversationHistory, ragContext, systemPromp
 }
 
 async function generate(userMessage, conversationHistory, ragContext, settings) {
-  const client = new OpenAI({ apiKey: settings.apiKey });
+  const clientOptions = { apiKey: settings.apiKey };
+  if (settings.baseUrl) clientOptions.baseURL = settings.baseUrl;
+  const client = new OpenAI(clientOptions);
 
   const response = await client.chat.completions.create({
     model: settings.model,
@@ -36,7 +38,9 @@ async function generate(userMessage, conversationHistory, ragContext, settings) 
 }
 
 async function test(settings) {
-  const client = new OpenAI({ apiKey: settings.apiKey });
+  const clientOptions = { apiKey: settings.apiKey };
+  if (settings.baseUrl) clientOptions.baseURL = settings.baseUrl;
+  const client = new OpenAI(clientOptions);
   const response = await client.chat.completions.create({
     model: settings.model,
     max_tokens: 10,

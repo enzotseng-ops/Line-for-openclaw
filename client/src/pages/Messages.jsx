@@ -31,7 +31,7 @@ export default function Messages() {
       setMessages(res.data.messages.reverse());
       setPagination(res.data.pagination);
     } catch (err) {
-      toast.error('載入失敗');
+      toast.error('載入失敗', { id: 'messages-fetch-error' });
     } finally {
       setLoading(false);
     }

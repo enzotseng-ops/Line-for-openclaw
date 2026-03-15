@@ -135,7 +135,7 @@ async function handleMessageEvent(event) {
       const mediaPath = await downloadMedia(message.id, lineUserId, message.type);
       msgRecord.media_url = mediaPath;
     } catch (err) {
-      logger.error('Media download error:', err.message);
+      logger.logError('Media download error', err);
     }
   }
 
@@ -154,7 +154,7 @@ async function handleMessageEvent(event) {
         messages: [{ type: 'text', text: `訊息太長，請將內容控制在 ${maxLen} 字以內。` }],
       });
     } catch (err) {
-      logger.error('LINE reply error (too long):', err.message);
+      logger.logError('LINE reply error (too long)', err);
     }
     return;
   }
@@ -191,7 +191,7 @@ async function handleMessageEvent(event) {
     replyText = result.text;
     modelUsed = result.model;
   } catch (err) {
-    logger.error('LLM error:', err.message);
+    logger.logError('LLM error', err);
     return;
   }
 
@@ -202,7 +202,7 @@ async function handleMessageEvent(event) {
       messages: [{ type: 'text', text: replyText }],
     });
   } catch (err) {
-    logger.error('LINE reply error:', err.message);
+    logger.logError('LINE reply error', err);
     return;
   }
 

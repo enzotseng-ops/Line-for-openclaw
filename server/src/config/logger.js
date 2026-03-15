@@ -17,4 +17,19 @@ const logger = winston.createLogger({
   ],
 });
 
+/**
+ * Log an error with rich context: message, stack, HTTP status, response body.
+ * Usage: logError('LLM error', err)
+ */
+function logError(context, err) {
+  const meta = {
+    stack: err.stack,
+    statusCode: err.statusCode || err.status || err.response?.status,
+    responseBody: err.response?.data || err.response?.body,
+  };
+  logger.error(`${context}: ${err.message}`, meta);
+}
+
+logger.logError = logError;
+
 module.exports = logger;

@@ -64,7 +64,7 @@ async function testLLM(req, res, next) {
     const result = await testConnection();
     res.json(result);
   } catch (err) {
-    logger.error('LLM test failed:', err.message);
+    logger.logError('LLM test failed', err);
     res.status(400).json({ success: false, error: err.message });
   }
 }
@@ -95,7 +95,7 @@ async function testLine(req, res, next) {
       },
     });
   } catch (err) {
-    logger.error('LINE test failed:', err.message);
+    logger.logError('LINE test failed', err);
     const msg = err.statusCode === 401
       ? 'Channel Access Token 無效，請確認是否正確'
       : `LINE API 錯誤: ${err.message}`;
@@ -122,7 +122,7 @@ async function lineQuota(req, res, next) {
       used: consumption.totalUsage,
     });
   } catch (err) {
-    logger.error('LINE quota check failed:', err.message);
+    logger.logError('LINE quota check failed', err);
     res.status(400).json({ error: err.message });
   }
 }

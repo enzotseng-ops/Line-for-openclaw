@@ -10,41 +10,65 @@ const logger = require('../config/logger');
 async function status(req, res, next) {
   try {
     const checks = {
-      database: false,
-      admin: false,
-      line: false,
-      llm: false,
+      database: { configured: false, verified: false },
+      admin: { configured: false },
+      line: { configured: false, verified: false, error: null },
+      llm: { configured: false, verified: false, error: null },
       setupComplete: false,
     };
 
     // 1. Database connectivity
     try {
       await db.raw('SELECT 1');
-      checks.database = true;
+      checks.database = { configured: true, verified: true };
     } catch {
       return res.json(checks);
     }
 
     // 2. Admin account exists
     const adminCount = await db('users').count('id as count').first();
-    checks.admin = parseInt(adminCount.count) > 0;
+    checks.admin = { configured: parseInt(adminCount.count) > 0 };
 
-    // 3. LINE credentials configured
+    // 3. LINE credentials — configured + verify via getBotInfo
     const lineSecret = await getSetting('line_channel_secret');
     const lineToken = await getSetting('line_channel_access_token');
-    checks.line = Boolean(lineSecret && lineToken);
+    checks.line.configured = Boolean(lineSecret && lineToken);
+    if (checks.line.configured) {
+      try {
+        const line = require('@line/bot-sdk');
+        const client = new line.messagingApi.MessagingApiClient({ channelAccessToken: lineToken });
+        await client.getBotInfo();
+        checks.line.verified = true;
+      } catch (err) {
+        checks.line.error = err.statusCode === 401
+          ? 'Token 無效，請確認 Secret 與 Token 屬於同一個 Channel'
+          : err.message;
+      }
+    }
 
-    // 4. LLM configured
+    // 4. LLM — configured + verify via test call
     const llmKey = await getSetting('llm_api_key');
     const llmProvider = await getSetting('llm_provider');
-    checks.llm = Boolean(llmKey && llmProvider);
+    checks.llm.configured = Boolean(llmKey && llmProvider);
+    if (checks.llm.configured) {
+      try {
+        const { testConnection } = require('../services/llm/factory');
+        await testConnection();
+        checks.llm.verified = true;
+      } catch (err) {
+        checks.llm.error = err.message;
+      }
+    }
 
-    // Overall completion
-    checks.setupComplete = checks.database && checks.admin && checks.line && checks.llm;
+    // Overall: all configured (verification is informational)
+    checks.setupComplete = checks.database.configured
+      && checks.admin.configured
+      && checks.line.configured
+      && checks.llm.configured;
 
     res.json(checks);
   } catch (err) {
-    logger.error('Setup status check failed:', err.message);
+    logger.logError('Setup status check failed', err);
     next(err);
   }
 }
@@ -87,7 +111,7 @@ async function initialize(req, res, next) {
 
     res.json({ updated: results });
   } catch (err) {
-    logger.error('Setup initialize failed:', err.message);
+    logger.logError('Setup initialize failed', err);
     next(err);
   }
 }

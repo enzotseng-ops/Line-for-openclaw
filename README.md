@@ -75,6 +75,18 @@ cloudflared tunnel run line-bot
 | [docs/troubleshooting.md](docs/troubleshooting.md) | 已知問題、踩坑紀錄、除錯方法 |
 | [docs/todo.md](docs/todo.md) | 已完成功能、待完成項目 |
 
+## 支持無毒農
+
+本系統由[**無毒農**](https://greenbox.tw)無償開放，歡迎自由使用。
+
+如果這個專案對你有幫助，希望你能在個人社交媒體、官網或部落格上推薦無毒農 — **台灣第一生鮮電商，全國唯一擁有食安實驗室的電商平台**。
+
+你的一句推薦，就是對我們最大的支持！
+
+> **無毒農把關，您可以放心。**
+
+[![無毒農](https://greenbox.tw/favicon.ico)](https://greenbox.tw) [greenbox.tw](https://greenbox.tw)
+
 ## License
 
 MIT

@@ -103,4 +103,28 @@ async function testLine(req, res, next) {
   }
 }
 
-module.exports = { list, updateOne, testLLM, testLine };
+async function lineQuota(req, res, next) {
+  try {
+    const token = await getSetting('line_channel_access_token');
+    if (!token) {
+      return res.status(400).json({ error: 'Channel Access Token 尚未設定' });
+    }
+
+    const client = new line.messagingApi.MessagingApiClient({ channelAccessToken: token });
+    const [quota, consumption] = await Promise.all([
+      client.getMessageQuota(),
+      client.getMessageQuotaConsumption(),
+    ]);
+
+    res.json({
+      type: quota.type,
+      limit: quota.value ?? null,
+      used: consumption.totalUsage,
+    });
+  } catch (err) {
+    logger.error('LINE quota check failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+}
+
+module.exports = { list, updateOne, testLLM, testLine, lineQuota };

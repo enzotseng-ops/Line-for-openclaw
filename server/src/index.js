@@ -1,4 +1,20 @@
 require('dotenv').config();
+
+// Validate required environment variables
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'ENCRYPTION_KEY'];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`Missing required environment variable: ${key}`);
+    console.error('Please check server/.env file. See .env.example for reference.');
+    process.exit(1);
+  }
+}
+if (process.env.JWT_SECRET === 'your-jwt-secret-key-change-in-production') {
+  console.error('JWT_SECRET is still the default placeholder. Generate a strong secret:');
+  console.error('  node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64\'))"');
+  process.exit(1);
+}
+
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');

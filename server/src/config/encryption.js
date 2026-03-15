@@ -1,7 +1,10 @@
 const crypto = require('crypto');
 
 const ALGORITHM = 'aes-256-gcm';
-const KEY = Buffer.from(process.env.ENCRYPTION_KEY || '0'.repeat(64), 'hex');
+if (!process.env.ENCRYPTION_KEY) {
+  throw new Error('ENCRYPTION_KEY environment variable is required (64-char hex string)');
+}
+const KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
 function encrypt(text) {
   if (!text) return '';

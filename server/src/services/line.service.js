@@ -104,6 +104,11 @@ async function handleMessageEvent(event) {
 
   // Get user profile
   const client = await getLineClient();
+
+  // Mark messages as read
+  client.markMessagesAsRead({ chat: { userId: lineUserId } })
+    .catch((err) => logger.debug('markAsRead skipped:', err.message));
+
   let profile;
   try {
     profile = await client.getProfile(lineUserId);
@@ -139,18 +144,39 @@ async function handleMessageEvent(event) {
   // Only handle AI reply for text messages
   if (message.type !== 'text') return;
 
+  // Check message length limit
+  const maxLenStr = await getSetting('max_message_length');
+  const maxLen = parseInt(maxLenStr, 10) || 500;
+  if (message.text.length > maxLen) {
+    try {
+      await client.replyMessage({
+        replyToken,
+        messages: [{ type: 'text', text: `訊息太長，請將內容控制在 ${maxLen} 字以內。` }],
+      });
+    } catch (err) {
+      logger.error('LINE reply error (too long):', err.message);
+    }
+    return;
+  }
+
   const aiEnabled = await shouldAIReply(lineUser);
   logger.info(`AI reply check: user=${lineUserId}, mode=${lineUser.mode}, active=${lineUser.is_active}, result=${aiEnabled}`);
   if (!aiEnabled) {
     return;
   }
 
-  // Get the last 20 text messages (both inbound & outbound) for this user as conversation context
+  // Show loading animation while AI is generating reply
+  client.showLoadingAnimation({ chatId: lineUserId, loadingSeconds: 30 })
+    .catch((err) => logger.debug('showLoadingAnimation skipped:', err.message));
+
+  // Get conversation history for LLM context
+  const historyLimitStr = await getSetting('conversation_history_limit');
+  const historyLimit = parseInt(historyLimitStr, 10) || 20;
   const history = await db('messages')
     .where({ line_user_id: lineUserId })
     .whereIn('message_type', ['text'])
     .orderBy('created_at', 'desc')
-    .limit(20);
+    .limit(historyLimit);
 
   history.reverse(); // chronological order for LLM context
 

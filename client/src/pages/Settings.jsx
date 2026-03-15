@@ -150,6 +150,36 @@ export default function Settings() {
         </Field>
       </Section>
 
+      {/* Chat Settings */}
+      <Section title="對話設定">
+        <Field label="對話紀錄長度">
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={settings.conversation_history_limit || '20'}
+            onChange={(e) => setSettings((prev) => ({ ...prev, conversation_history_limit: e.target.value }))}
+            placeholder="20"
+            className="input-field flex-1"
+          />
+          <SaveBtn onClick={() => updateSetting('conversation_history_limit', settings.conversation_history_limit)} saving={saving.conversation_history_limit} />
+        </Field>
+        <p className="text-xs text-gray-400 -mt-2">AI 回覆時載入最近 N 則對話作為上下文</p>
+        <Field label="訊息長度上限（字）">
+          <input
+            type="number"
+            min="1"
+            max="5000"
+            value={settings.max_message_length || '500'}
+            onChange={(e) => setSettings((prev) => ({ ...prev, max_message_length: e.target.value }))}
+            placeholder="500"
+            className="input-field flex-1"
+          />
+          <SaveBtn onClick={() => updateSetting('max_message_length', settings.max_message_length)} saving={saving.max_message_length} />
+        </Field>
+        <p className="text-xs text-gray-400 -mt-2">超過此長度的訊息將不處理，直接回覆「訊息太長」</p>
+      </Section>
+
       {/* LLM Settings */}
       <Section title="LLM 設定">
         <Field label="LLM 供應商">

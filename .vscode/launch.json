@@ -5,7 +5,7 @@
       "name": "Backend (nodemon + debug)",
       "type": "node",
       "request": "launch",
-      "preLaunchTask": "📦 Build Frontend",
+      "preLaunchTask": "🚀 Pre-Launch (Kill + Build)",
       "runtimeExecutable": "${workspaceFolder}/server/node_modules/.bin/nodemon",
       "program": "${workspaceFolder}/server/src/index.js",
       "cwd": "${workspaceFolder}/server",

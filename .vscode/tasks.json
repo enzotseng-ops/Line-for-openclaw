@@ -61,6 +61,12 @@
       "problemMatcher": []
     },
     {
+      "label": "🚀 Pre-Launch (Kill + Build)",
+      "dependsOn": ["🔴 Kill All Services (3000 + 5173)", "📦 Build Frontend"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
       "label": "🗄️  DB Migrate Rollback",
       "type": "shell",
       "command": "npm run migrate:rollback",

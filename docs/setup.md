@@ -20,23 +20,56 @@ cd server && cp .env.example .env
 |------|------|------|------|
 | `PORT` | | 後端服務埠 | 預設 3000 |
 | `DATABASE_URL` | **必填** | PostgreSQL 連線字串 | 格式：`postgresql://user:pass@host:port/dbname` |
-| `JWT_SECRET` | **必填** | JWT 簽名金鑰 | ⚠️ 上線前必須換強隨機字串 |
-| `ENCRYPTION_KEY` | **必填** | AES-256-GCM 加密金鑰 | 64 個 hex 字元 |
+| `JWT_SECRET` | **必填** | JWT 簽名金鑰 | 見下方說明 |
+| `ENCRYPTION_KEY` | **必填** | AES-256-GCM 加密金鑰 | 見下方說明 |
 | `LINE_CHANNEL_SECRET` | | LINE Channel Secret（Fallback） | 優先從 DB 讀取 |
 | `LINE_CHANNEL_ACCESS_TOKEN` | | LINE Channel Access Token（Fallback） | 優先從 DB 讀取 |
 | `GOOGLE_AI_API_KEY` | | Google Gemini API Key（Fallback） | 優先從 DB 讀取 |
 
 > **設定優先順序**：管理後台 Settings 頁面寫入 DB → DB 讀取 → `.env` 環境變數 fallback
 
-生成 ENCRYPTION_KEY：
+### JWT_SECRET（重要！）
+
+**用途**：簽署和驗證管理員登入的 JWT Token。
+
+**風險**：如果使用預設值或被他人取得，任何人都能偽造管理員身份登入後台。
+
+**規則**：
+- 系統啟動時會檢查此值，**不能留空**，也**不能使用 `.env.example` 裡的預設值**
+- 使用預設值 `your-jwt-secret-key-change-in-production` 時，server 會拒絕啟動
+- 更換後，所有已登入的 session 會失效，需重新登入
+
+**生成方式**：
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
+
+### ENCRYPTION_KEY（重要！）
+
+**用途**：用 AES-256-GCM 加密儲存在資料庫中的敏感設定（LINE Channel Secret、Access Token、LLM API Key 等）。
+
+**風險**：如果遺失此 key，已加密的設定將無法解密，需要重新填入所有 API 金鑰。
+
+**規則**：
+- 必須是 **64 個十六進位字元**（= 32 bytes）
+- 系統啟動時會檢查，**未設定則拒絕啟動**
+- **請務必備份此值**，更換後舊資料無法解密
+
+**生成方式**：
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-生成強 JWT_SECRET：
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-```
+### 啟動檢查
+
+系統啟動時會自動檢查以下項目，任一不通過則拒絕啟動並顯示錯誤訊息：
+
+| 檢查項目 | 錯誤訊息 |
+|----------|---------|
+| `DATABASE_URL` 未設定 | `Missing required environment variable: DATABASE_URL` |
+| `JWT_SECRET` 未設定 | `Missing required environment variable: JWT_SECRET` |
+| `JWT_SECRET` 為預設值 | `JWT_SECRET is still the default placeholder` |
+| `ENCRYPTION_KEY` 未設定 | `Missing required environment variable: ENCRYPTION_KEY` |
 
 ---
 

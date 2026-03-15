@@ -17,13 +17,14 @@ function StatCard({ label, value, sub }) {
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
+  const [quota, setQuota] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/messages/dashboard')
-      .then((res) => setData(res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get('/messages/dashboard').then((res) => setData(res.data)).catch(() => {}),
+      api.get('/settings/line/quota').then((res) => setQuota(res.data)).catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -53,11 +54,16 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       <h1 className="text-xl font-semibold">儀表板</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="今日訊息" value={data?.today_messages ?? 0} sub="inbound + outbound" />
         <StatCard label="今日活躍用戶" value={data?.today_users ?? 0} />
         <StatCard label="AI 回覆次數" value={data?.ai_reply_count ?? 0} sub="今日" />
         <StatCard label="AI 回覆率" value={`${data?.ai_ratio ?? 0}%`} sub="今日 outbound" />
+        <StatCard
+          label="推送訊息用量"
+          value={quota ? `${quota.used}${quota.limit ? ` / ${quota.limit}` : ''}` : '-'}
+          sub={quota ? `本月已使用（${quota.type === 'limited' ? '免費方案' : '付費方案'}）` : 'LINE 未連線'}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

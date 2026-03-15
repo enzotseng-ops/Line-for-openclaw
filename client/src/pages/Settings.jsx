@@ -116,7 +116,9 @@ export default function Settings() {
     }
   }, []);
 
-  const webhookUrl = `${window.location.origin}/api/webhook/line`;
+  const productionWebhookUrl = 'https://line-bot.openclaw-gb.com/api/webhook/line';
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const webhookUrl = isLocalDev ? productionWebhookUrl : `${window.location.origin}/api/webhook/line`;
 
   if (loading) return <div className="p-6 text-gray-400">載入中...</div>;
 
@@ -328,7 +330,7 @@ export default function Settings() {
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            本機開發請改用 ngrok 產生的公開網址（見下方教學）
+            已透過 Cloudflare Tunnel 對外，直接將此 URL 貼到 LINE Console
           </p>
         </div>
 
@@ -511,21 +513,18 @@ function LineTutorial({ webhookUrl }) {
           Phase 3 — 設定 Webhook（接收訊息）
         </div>
 
-        <TutorialStep step={7} title="本機開發：啟動 ngrok">
-          <p>LINE 需要一個 <strong>公開的 HTTPS 網址</strong> 才能傳送 Webhook 事件。本機開發時使用 ngrok 建立隧道：</p>
+        <TutorialStep step={7} title="啟動 Cloudflare Tunnel">
+          <p>LINE 需要一個 <strong>公開的 HTTPS 網址</strong> 才能傳送 Webhook 事件。本專案使用 Cloudflare Tunnel 建立固定網址：</p>
           <div className="bg-gray-800 text-green-400 rounded p-2 font-mono text-xs space-y-1">
-            <p># 安裝 ngrok（若尚未安裝）</p>
-            <p>brew install ngrok    <span className="text-gray-500"># macOS</span></p>
-            <p className="mt-2"># 啟動隧道，指向後端 port 3000</p>
-            <p>ngrok http 3000</p>
+            <p># 啟動 Cloudflare Tunnel（指向本機 port 3000）</p>
+            <p>cloudflared tunnel run line-bot</p>
           </div>
-          <p className="mt-1">啟動後 ngrok 會顯示一個公開網址，例如：</p>
-          <code className="block bg-white border rounded px-2 py-1 break-all">
-            https://a1b2-203-69-xxx-xxx.ngrok-free.app
+          <p className="mt-1">啟動後，本機 port 3000 會透過固定網址對外：</p>
+          <code className="block bg-white border rounded px-2 py-1 text-blue-700 break-all">
+            https://line-bot.openclaw-gb.com
           </code>
-          <div className="bg-amber-50 border border-amber-200 rounded p-2 mt-1">
-            ngrok 免費版每次重啟會產生<strong>新網址</strong>，需要回到 LINE Console 重新設定。
-            付費版（$8/月）可以使用固定子網域。
+          <div className="bg-green-50 border border-green-200 rounded p-2 mt-1">
+            Cloudflare Tunnel 使用<strong>固定子網域</strong>，不需要每次重新設定 LINE Webhook URL。
           </div>
         </TutorialStep>
 
@@ -541,9 +540,9 @@ function LineTutorial({ webhookUrl }) {
             <code className="block bg-white border rounded px-2 py-1 text-blue-700 break-all">
               {webhookUrl}
             </code>
-            <p className="text-xs text-gray-500 mt-2 mb-1">本機開發（ngrok）：</p>
+            <p className="text-xs text-gray-500 mt-2 mb-1">Cloudflare Tunnel（已設定）：</p>
             <code className="block bg-white border rounded px-2 py-1 text-blue-700 break-all">
-              https://your-ngrok-id.ngrok-free.app/api/webhook/line
+              https://line-bot.openclaw-gb.com/api/webhook/line
             </code>
           </div>
           <div className="bg-white border rounded p-2 space-y-1 mt-2">
@@ -593,7 +592,7 @@ function LineTutorial({ webhookUrl }) {
             problem="Verify 顯示錯誤"
             solutions={[
               '確認後端已啟動（npm run dev）',
-              '確認 ngrok 正在運行且指向正確的 port',
+              '確認 Cloudflare Tunnel 正在運行（cloudflared tunnel run line-bot）',
               '確認 Webhook URL 結尾是 /api/webhook/line',
               '確認 Channel Secret 已正確儲存到本系統',
             ]}

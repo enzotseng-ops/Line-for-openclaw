@@ -2,6 +2,18 @@
 
 所有 API 以 `/api` 為前綴。除 auth、webhook、setup/status 外，其餘端點需要 JWT Bearer Token。
 
+### 速率限制回應標頭
+
+登入和註冊端點會回傳標準速率限制標頭：
+
+| Header | 說明 |
+|--------|------|
+| `RateLimit-Limit` | 時間窗口內的最大請求數 |
+| `RateLimit-Remaining` | 剩餘請求數 |
+| `RateLimit-Reset` | 重設時間（秒） |
+
+超過限制時回傳 `429 Too Many Requests`。
+
 ## 初始設定
 
 | 方法 | 路徑 | 說明 |
@@ -24,9 +36,10 @@
 
 | 方法 | 路徑 | 說明 |
 |------|------|------|
-| POST | `/api/auth/register` | 管理員註冊 |
-| POST | `/api/auth/login` | 管理員登入，回傳 JWT |
+| POST | `/api/auth/register` | 管理員註冊（限制：每 IP 每小時 3 次） |
+| POST | `/api/auth/login` | 管理員登入，回傳 JWT（限制：每 IP 每 15 分鐘 10 次） |
 | GET | `/api/auth/me` | 取得目前登入者資訊 |
+| PUT | `/api/auth/password` | 修改密碼（需目前密碼驗證） |
 
 ## LINE Webhook
 
@@ -91,4 +104,4 @@
 | `/messages` | 訊息紀錄查詢、CSV 匯出 |
 | `/schedules` | 排程管理 |
 | `/knowledge` | 知識庫 PDF 上傳管理 |
-| `/settings` | LLM / RAG / LINE 串接設定 |
+| `/settings` | LLM / RAG / LINE 串接設定、密碼修改、速率限制 |

@@ -9,6 +9,7 @@
 - 訊息紀錄查詢與 CSV 匯出
 - 排程自動傳訊
 - 管理後台 Web UI
+- 安全防護：登入速率限制、LINE 用戶 AI 回覆速率限制、密碼管理
 
 ## 技術棧
 
@@ -19,6 +20,7 @@
 | 資料庫 | PostgreSQL 14+ / Knex.js ORM |
 | AI | LLM Factory（Gemini / OpenAI / Claude / Custom）+ Google File Search RAG |
 | 加密 | AES-256-GCM（敏感設定欄位） |
+| 安全 | Helmet.js / CORS / express-rate-limit / bcryptjs |
 | 對外 | Cloudflare Tunnel（固定子網域） |
 
 ## 快速開始
@@ -51,7 +53,21 @@ cloudflared tunnel run line-bot
 - 前端：http://localhost:5173
 - 後端：http://localhost:3000
 - 對外：https://line-bot.openclaw-gb.com（需啟動 Cloudflare Tunnel）
-- 預設管理員：`admin@example.com` / `admin123456`
+- 預設管理員：`admin@example.com` / `admin123456`（首次登入後請立即至設定頁面修改密碼）
+
+### 安全防護
+
+本系統內建多層安全防護，無需額外設定：
+
+| 防護層 | 機制 | 說明 |
+|--------|------|------|
+| 登入暴力破解 | express-rate-limit | 每 IP 每 15 分鐘最多 10 次登入嘗試 |
+| 註冊濫用 | express-rate-limit | 每 IP 每小時最多 3 次註冊 |
+| LINE 用戶濫發 | DB-based rate limit | 可在後台設定每用戶 AI 回覆上限（預設 5 分鐘 10 則） |
+| 密碼安全 | bcryptjs | salt rounds 10，後台可修改密碼 |
+| 敏感資料加密 | AES-256-GCM | API Key、LINE 憑證等自動加密儲存 |
+| HTTP 安全標頭 | Helmet.js | 自動設定安全相關 HTTP headers |
+| CORS | 可設定 | 支援萬用字元子網域，可透過環境變數設定 |
 
 ### 初次啟動安裝精靈
 

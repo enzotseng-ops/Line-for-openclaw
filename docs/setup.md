@@ -114,7 +114,7 @@ cd client && npm run dev
 
 - 前端：http://localhost:5173
 - 後端：http://localhost:3000
-- 預設管理員：`admin@example.com` / `admin123456`
+- 預設管理員：`admin@example.com` / `admin123456`（首次登入後請至設定頁面修改密碼）
 
 ### Step 5：初次啟動安裝精靈
 
@@ -258,3 +258,50 @@ cloudflared tunnel run line-bot
 3. 上傳成功後狀態會變為 `ready`
 
 > RAG 使用 Google Gemini File Search API，上傳的文件會建立向量索引用於語意搜尋。
+
+---
+
+## 安全防護（內建）
+
+系統內建以下安全防護，安裝後自動生效，無需額外設定：
+
+### 登入速率限制
+
+使用 `express-rate-limit` 防止暴力破解和 DDoS：
+
+| 端點 | 限制 | 超限回應 |
+|------|------|---------|
+| `POST /api/auth/login` | 每 IP 每 15 分鐘 10 次 | 429 + `登入嘗試過多，請 15 分鐘後再試。` |
+| `POST /api/auth/register` | 每 IP 每小時 3 次 | 429 + `註冊嘗試過多，請 1 小時後再試。` |
+
+超限時前端會自動顯示中文錯誤訊息。Server log 會記錄被限制的 IP 和嘗試登入的 email。
+
+### LINE 用戶 AI 回覆速率限制
+
+防止單一 LINE 用戶頻繁觸發 AI 回覆造成 Token 費用暴漲：
+
+| 設定 | 預設值 | 說明 |
+|------|--------|------|
+| `rate_limit_window_minutes` | 5 | 時間窗口（分鐘） |
+| `rate_limit_max_messages` | 10 | 窗口內最大 AI 回覆數 |
+
+在管理後台 **系統設定** → **對話設定** → **速率限制** 區塊可調整。設為 0 則不限制。
+
+超限時 Bot 會回覆：「您發送訊息太頻繁，請 X 分鐘後再試。（上限：每 X 分鐘 Y 則）」
+
+### 密碼管理
+
+管理員可在 **系統設定** 頁面修改密碼：
+- 需輸入目前密碼驗證身份
+- 新密碼至少 8 個字元
+- 使用 bcryptjs（salt rounds 10）雜湊儲存
+
+### CORS 設定
+
+預設允許 `*.openclaw-gb.com` 子網域和本地開發埠（5173-5175）。可透過環境變數自訂：
+
+```bash
+# server/.env（可選）
+CLIENT_URL=https://your-domain.com
+CORS_ALLOWED_ORIGINS=*.your-domain.com,*.another-domain.com
+```

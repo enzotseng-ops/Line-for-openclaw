@@ -211,7 +211,64 @@ Google Gemini File Upload API 不接受 HTTP Header 中的非 ASCII 字元。
 
 ---
 
-## 10. 開發環境常用指令
+## 10. 登入被鎖定（429 Too Many Requests）
+
+### 症狀
+- 登入時顯示「登入嘗試過多，請 15 分鐘後再試」
+- API 回傳 429 狀態碼
+
+### 根因
+`express-rate-limit` 偵測到同一 IP 在 15 分鐘內嘗試登入超過 10 次。
+
+### 解法
+1. **等待 15 分鐘**後重試
+2. **重啟 server**（速率限制使用記憶體儲存，重啟後計數器重設）：
+   ```bash
+   # Ctrl+C 停止 server，然後重新啟動
+   cd server && npm run dev
+   ```
+
+### 相關 Log
+Server log 會記錄速率限制觸發事件：
+```
+warn: Login rate limit exceeded: ip=::1, email=admin@example.com
+```
+
+---
+
+## 11. LINE 用戶被速率限制
+
+### 症狀
+- LINE 用戶傳訊後 Bot 回覆「您發送訊息太頻繁，請 X 分鐘後再試」
+
+### 根因
+該用戶在時間窗口內的 AI 回覆數達到上限。
+
+### 解法
+1. 在管理後台 **系統設定** → **對話設定** → **速率限制** 調整上限
+2. 設為 0 則完全不限制
+
+### 相關 Log
+```
+info: Rate limit hit: user=Uxxxxx, used=10/10 in 5min
+```
+
+---
+
+## 12. 密碼修改後舊密碼仍可登入
+
+### 根因
+瀏覽器快取了舊的 JWT Token（7 天有效期）。在 Token 過期前，已登入的 Session 仍然有效。
+
+### 解法
+1. 在前端**登出**（清除 Token）
+2. 用新密碼重新登入
+
+> 這不是安全漏洞 — 密碼修改會立即生效於新的登入嘗試，但不會撤銷已發出的 JWT Token。
+
+---
+
+## 13. 開發環境常用指令
 
 ```bash
 # 查看 server 是否運行

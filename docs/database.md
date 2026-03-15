@@ -106,6 +106,9 @@ Seed 預設管理員：`admin@example.com` / `admin123456`
 | `custom_llm_base_url` | 自訂 LLM Base URL | |
 | `line_channel_secret` | LINE Channel Secret | AES-256-GCM |
 | `line_channel_access_token` | LINE Channel Access Token | AES-256-GCM |
+| `max_message_length` | 最大訊息處理長度（預設 500） | |
+| `rate_limit_window_minutes` | AI 回覆速率限制時間窗口，分鐘（預設 5） | |
+| `rate_limit_max_messages` | 窗口內最大 AI 回覆數（預設 10，0=不限） | |
 
 ---
 

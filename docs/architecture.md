@@ -44,9 +44,13 @@ Line-for-openclaw/
 │   │   │   │   └── claude.provider.js  # Anthropic Claude provider
 │   │   │   ├── line.service.js         # LINE 訊息處理（async getLineClient）
 │   │   │   ├── rag.service.js          # Google Gemini File Search RAG
+│   │   │   ├── rateLimit.service.js    # LINE 用戶 AI 回覆速率限制
 │   │   │   ├── scheduler.service.js    # 排程自動傳訊
 │   │   │   └── settings.service.js     # DB-first 設定讀取（60s 快取）
-│   │   ├── middleware/                 # JWT auth、錯誤處理
+│   │   ├── middleware/
+│   │   │   ├── auth.js                # JWT 驗證 middleware
+│   │   │   ├── errorHandler.js        # 全域錯誤處理
+│   │   │   └── loginRateLimit.js      # 登入/註冊 IP 速率限制
 │   │   └── migrations/                 # Knex migration 檔案（6 張表）
 │   ├── uploads/                        # 上傳的媒體 & 知識庫暫存
 │   └── .env                            # 環境變數（不 commit）
@@ -79,6 +83,20 @@ Line-for-openclaw/
 - Google Gemini File Upload API 不接受 HTTP Header 中的中文字元
 - 解法：上傳前將檔案複製到 `/tmp/` 並改為 ASCII 安全檔名，上傳完成後刪除暫存
 - 相關邏輯在 `files.controller.js` 和 `files.routes.js`
+
+### 安全防護架構
+
+系統內建兩層速率限制：
+
+1. **IP 層級**（`loginRateLimit.js`）：使用 `express-rate-limit`，保護登入和註冊端點免受暴力破解
+   - 登入：每 IP 每 15 分鐘 10 次
+   - 註冊：每 IP 每小時 3 次
+   - 記憶體儲存（單實例部署適用）
+
+2. **用戶層級**（`rateLimit.service.js`）：DB-based 查詢，限制單一 LINE 用戶的 AI 回覆頻率
+   - 查詢 `messages` 表中的 AI outbound 記錄
+   - 可在管理後台動態調整（`rate_limit_window_minutes`、`rate_limit_max_messages`）
+   - 設為 0 時不限制
 
 ### LLM Provider 路由
 - `gemini` provider 使用 `openai.provider.js`，但 baseURL 指向 Google 的 OpenAI 相容端點

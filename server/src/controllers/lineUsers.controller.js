@@ -5,7 +5,7 @@ async function list(req, res, next) {
     const { page = 1, limit = 20, search = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = db('line_users').orderBy('last_message_at', 'desc');
+    let query = db('line_users');
 
     if (search) {
       query = query.where((builder) => {
@@ -15,7 +15,7 @@ async function list(req, res, next) {
     }
 
     const total = await query.clone().count('id as count').first();
-    const users = await query.select('*').limit(limit).offset(offset);
+    const users = await query.clone().select('*').orderBy('last_message_at', 'desc').limit(limit).offset(offset);
 
     res.json({
       users,

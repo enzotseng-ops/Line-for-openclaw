@@ -1,0 +1,77 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🔴 Kill All Services (3000 + 5173)",
+      "type": "shell",
+      "command": "kill $(lsof -ti:3000,5173) 2>/dev/null && echo '✅ Ports 3000 & 5173 cleared' || echo 'ℹ️  No processes found on 3000/5173'",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔴 Kill Backend (3000)",
+      "type": "shell",
+      "command": "kill $(lsof -ti:3000) 2>/dev/null && echo '✅ Port 3000 cleared' || echo 'ℹ️  No process on port 3000'",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔴 Kill Frontend (5173)",
+      "type": "shell",
+      "command": "kill $(lsof -ti:5173) 2>/dev/null && echo '✅ Port 5173 cleared' || echo 'ℹ️  No process on port 5173'",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🗄️  DB Migrate",
+      "type": "shell",
+      "command": "npm run migrate",
+      "options": {
+        "cwd": "${workspaceFolder}/server"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📦 Build Frontend",
+      "type": "shell",
+      "command": "npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/client"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🗄️  DB Migrate Rollback",
+      "type": "shell",
+      "command": "npm run migrate:rollback",
+      "options": {
+        "cwd": "${workspaceFolder}/server"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

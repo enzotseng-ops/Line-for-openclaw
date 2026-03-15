@@ -140,8 +140,8 @@ async function handleMessageEvent(event) {
   if (message.type !== 'text') return;
 
   const aiEnabled = await shouldAIReply(lineUser);
+  logger.info(`AI reply check: user=${lineUserId}, mode=${lineUser.mode}, active=${lineUser.is_active}, result=${aiEnabled}`);
   if (!aiEnabled) {
-    logger.info(`AI reply skipped for user ${lineUserId} (mode: ${lineUser.mode})`);
     return;
   }
 

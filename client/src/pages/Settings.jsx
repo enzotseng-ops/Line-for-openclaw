@@ -126,6 +126,30 @@ export default function Settings() {
     <div className="p-6 space-y-6 max-w-2xl">
       <h1 className="text-xl font-semibold">系統設定</h1>
 
+      {/* Site Branding */}
+      <Section title="網站品牌">
+        <Field label="網站名稱">
+          <input
+            type="text"
+            value={settings.site_name || ''}
+            onChange={(e) => setSettings((prev) => ({ ...prev, site_name: e.target.value }))}
+            placeholder="LINE 智能客服"
+            className="input-field flex-1"
+          />
+          <SaveBtn onClick={() => updateSetting('site_name', settings.site_name)} saving={saving.site_name} />
+        </Field>
+        <Field label="副標題">
+          <input
+            type="text"
+            value={settings.site_subtitle || ''}
+            onChange={(e) => setSettings((prev) => ({ ...prev, site_subtitle: e.target.value }))}
+            placeholder="無毒農蝦"
+            className="input-field flex-1"
+          />
+          <SaveBtn onClick={() => updateSetting('site_subtitle', settings.site_subtitle)} saving={saving.site_subtitle} />
+        </Field>
+      </Section>
+
       {/* LLM Settings */}
       <Section title="LLM 設定">
         <Field label="LLM 供應商">

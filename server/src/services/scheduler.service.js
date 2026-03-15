@@ -11,6 +11,9 @@ async function isWithinSchedule() {
   const rules = await db('schedule_rules')
     .where({ day_of_week: dayOfWeek, is_enabled: true });
 
+  // No rules configured = always available (24/7)
+  if (rules.length === 0) return true;
+
   for (const rule of rules) {
     if (currentTime >= rule.start_time.substring(0, 5) && currentTime <= rule.end_time.substring(0, 5)) {
       return true;

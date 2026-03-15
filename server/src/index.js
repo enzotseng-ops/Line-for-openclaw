@@ -45,6 +45,7 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
+app.use('/api/setup', require('./routes/setup.routes'));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/webhook', require('./routes/webhook.routes'));
 app.use('/api/line-users', require('./routes/lineUsers.routes'));

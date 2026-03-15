@@ -29,10 +29,12 @@ async function handleWebhook(req, res) {
 
   // Process events asynchronously
   const events = req.body.events || [];
+  logger.info(`Webhook received ${events.length} event(s)`);
   for (const event of events) {
+    logger.info(`Event: type=${event.type}, messageType=${event.message?.type}`);
     if (event.type === 'message') {
       handleMessageEvent(event).catch((err) =>
-        logger.error('Event processing error:', err.message)
+        logger.error('Event processing error:', err.message, err.stack)
       );
     }
   }

@@ -3,7 +3,7 @@
 ## 後端（`server/`）
 - **Runtime**: Node.js + Express
 - **Port**: 3000
-- **DB**: PostgreSQL（Zeabur 雲端，連線字串在 `server/.env`）
+- **DB**: PostgreSQL（LineAIBotDB，連線字串在 `server/.env`）
 - **ORM**: Knex.js（migration 檔案在 `server/src/migrations/`）
 - **啟動方式**: `cd server && npm run dev`（nodemon 自動重啟）
 
@@ -29,6 +29,7 @@ Line-for-openclaw/
 │   │   │   └── logger.js               # Winston logger
 │   │   ├── routes/                     # API 路由定義
 │   │   ├── controllers/
+│   │   │   ├── setup.controller.js    # 初始設定狀態檢查 + 批次初始化
 │   │   │   ├── auth.controller.js      # JWT 登入/驗證
 │   │   │   ├── lineUser.controller.js  # LINE 用戶管理
 │   │   │   ├── message.controller.js   # 訊息紀錄查詢
@@ -52,7 +53,8 @@ Line-for-openclaw/
 └── client/
     └── src/
         ├── pages/
-        │   ├── Dashboard.jsx           # 訊息統計儀表板
+        │   ├── Setup.jsx               # 初次啟動安裝精靈（6 步驟）
+│   ├── Dashboard.jsx           # 訊息統計儀表板
         │   ├── Users.jsx               # LINE 用戶列表、AI/人工切換
         │   ├── Messages.jsx            # 訊息紀錄、CSV 匯出
         │   ├── Schedules.jsx           # 排程管理

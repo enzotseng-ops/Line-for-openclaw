@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import api from '../services/api';
 
 const navItems = [
   { path: '/dashboard', label: '儀表板', icon: '📊' },
@@ -15,6 +16,17 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [siteName, setSiteName] = useState('LINE 智能客服');
+  const [siteSubtitle, setSiteSubtitle] = useState('無毒農');
+
+  useEffect(() => {
+    api.get('/settings').then((res) => {
+      const map = {};
+      res.data.forEach((s) => { map[s.key] = s.value; });
+      if (map.site_name) setSiteName(map.site_name);
+      if (map.site_subtitle) setSiteSubtitle(map.site_subtitle);
+    }).catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -31,8 +43,8 @@ export default function Layout({ children }) {
               <span className="text-white text-sm font-bold">L</span>
             </div>
             <div>
-              <p className="font-semibold text-sm">LINE 智能客服</p>
-              <p className="text-xs text-gray-500">無毒農</p>
+              <p className="font-semibold text-sm">{siteName}</p>
+              <p className="text-xs text-gray-500">{siteSubtitle}</p>
             </div>
           </div>
         </div>
@@ -56,7 +68,7 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-gray-200">
+        <div className="p-3 border-t border-gray-200 space-y-2">
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-7 h-7 bg-gray-300 rounded-full flex items-center justify-center">
               <span className="text-xs">{user?.name?.[0] || user?.email?.[0] || 'A'}</span>
@@ -68,6 +80,12 @@ export default function Layout({ children }) {
               登出
             </button>
           </div>
+          <p className="text-center text-xs text-gray-400">
+            Website powered by{' '}
+            <a href="https://greenbox.tw" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700 hover:underline">
+              無毒農
+            </a>
+          </p>
         </div>
       </aside>
 

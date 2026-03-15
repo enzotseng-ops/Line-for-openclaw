@@ -7,13 +7,7 @@ async function list(req, res, next) {
     const offset = (page - 1) * limit;
 
     let query = db('messages')
-      .leftJoin('line_users', 'messages.line_user_id', 'line_users.line_user_id')
-      .select(
-        'messages.*',
-        'line_users.display_name',
-        'line_users.picture_url'
-      )
-      .orderBy('messages.created_at', 'desc');
+      .leftJoin('line_users', 'messages.line_user_id', 'line_users.line_user_id');
 
     if (line_user_id) query = query.where('messages.line_user_id', line_user_id);
     if (message_type) query = query.where('messages.message_type', message_type);
@@ -21,7 +15,10 @@ async function list(req, res, next) {
     if (end_date) query = query.where('messages.created_at', '<=', new Date(end_date));
 
     const total = await query.clone().count('messages.id as count').first();
-    const messages = await query.limit(limit).offset(offset);
+    const messages = await query.clone()
+      .select('messages.*', 'line_users.display_name', 'line_users.picture_url')
+      .orderBy('messages.created_at', 'desc')
+      .limit(limit).offset(offset);
 
     res.json({
       messages,

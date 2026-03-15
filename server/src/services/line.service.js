@@ -165,9 +165,13 @@ async function handleMessageEvent(event) {
     return;
   }
 
-  // Show loading animation while AI is generating reply
-  client.showLoadingAnimation({ chatId: lineUserId, loadingSeconds: 30 })
-    .catch((err) => logger.debug('showLoadingAnimation skipped:', err.message));
+  // Show loading animation — must await to ensure it registers before reply,
+  // otherwise the animation may start AFTER the reply and persist indefinitely.
+  try {
+    await client.showLoadingAnimation({ chatId: lineUserId, loadingSeconds: 15 });
+  } catch (err) {
+    logger.debug('showLoadingAnimation skipped:', err.message);
+  }
 
   // Get conversation history for LLM context
   const historyLimitStr = await getSetting('conversation_history_limit');

@@ -20,14 +20,25 @@ function decrypt(encrypted) {
   if (!encrypted) return '';
   const parts = encrypted.split(':');
   if (parts.length !== 3) return encrypted; // not encrypted
-  const [ivHex, authTagHex, encryptedText] = parts;
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  try {
+    const [ivHex, authTagHex, encryptedText] = parts;
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    // ENCRYPTION_KEY changed or data corrupted — return empty so env fallback can kick in
+    const preview = encrypted.substring(0, 8);
+    console.error(
+      `[encryption] decrypt failed (${err.message}). ` +
+      `Data prefix: ${preview}... — ENCRYPTION_KEY may have changed. ` +
+      'Please re-enter this setting via the admin panel.'
+    );
+    return '';
+  }
 }
 
 module.exports = { encrypt, decrypt };

@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const logger = require('../config/logger');
 
 async function register(req, res, next) {
   try {
@@ -33,11 +34,13 @@ async function login(req, res, next) {
 
     const user = await db('users').where({ email }).first();
     if (!user) {
+      logger.warn(`Login failed (unknown email): ip=${req.ip}, email=${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
+      logger.warn(`Login failed (wrong password): ip=${req.ip}, email=${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

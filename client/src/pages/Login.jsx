@@ -16,7 +16,10 @@ export default function Login() {
       await login(form.email, form.password);
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.error || '登入失敗');
+      const msg = err.response?.status === 429
+        ? '登入嘗試過多，請 15 分鐘後再試'
+        : (err.response?.data?.error || '登入失敗');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

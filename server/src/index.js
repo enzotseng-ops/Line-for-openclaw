@@ -22,6 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
+const { loginLimiter, registerLimiter } = require('./middleware/loginRateLimit');
 
 // Ensure upload directories exist
 fs.mkdirSync(path.join(__dirname, '../uploads/knowledge'), { recursive: true });
@@ -83,6 +84,10 @@ app.use((req, res, next) => {
 
 // Static files for media uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Rate limiting for auth endpoints
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/register', registerLimiter);
 
 // Routes
 app.use('/api/setup', require('./routes/setup.routes'));

@@ -6,3 +6,7 @@ uploads/knowledge/*
 !uploads/**/.gitkeep
 dist/
 .DS_Store
+server/uploads/knowledge/1773503463350_501363157_主持人講稿與SG工作內容.pdf
+server/uploads/knowledge/1773503477951_21964711_全球食安與生鮮應用服務新創研究報告.pdf
+server/uploads/knowledge/1773503503966_666342738_春節怎麼過？無毒農幫您招好運過好年！.pdf
+server/uploads/knowledge/1773503513026_592678839_美日韓食安標竿比較與應用策略報告.pdf

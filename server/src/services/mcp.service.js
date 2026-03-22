@@ -13,13 +13,21 @@ const logger = require('../config/logger');
 const clientPool = new Map();
 
 /**
- * Build request headers for an MCP server (Bearer token + custom headers).
+ * Build request headers for an MCP server.
+ * Supports two auth modes: 'bearer' (Authorization: Bearer) and 'x-api-key' (X-Api-Key).
  */
 function buildHeaders(server) {
   const headers = {};
   if (server.api_key) {
     const key = decrypt(server.api_key);
-    if (key) headers.Authorization = `Bearer ${key}`;
+    if (key) {
+      const authType = server.auth_type || 'bearer';
+      if (authType === 'x-api-key') {
+        headers['X-Api-Key'] = key;
+      } else {
+        headers.Authorization = `Bearer ${key}`;
+      }
+    }
   }
   if (server.custom_headers) {
     try {

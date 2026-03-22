@@ -7,12 +7,17 @@ const TRANSPORT_TYPES = [
   { value: 'streamable-http', label: 'Streamable HTTP' },
 ];
 
+const AUTH_TYPES = [
+  { value: 'bearer', label: 'Bearer Token' },
+  { value: 'x-api-key', label: 'X-Api-Key' },
+];
+
 export default function McpServers() {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: '', transport_type: 'sse', url: '', api_key: '' });
+  const [form, setForm] = useState({ name: '', transport_type: 'sse', url: '', api_key: '', auth_type: 'bearer' });
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState(null);
   const [refreshingId, setRefreshingId] = useState(null);
@@ -27,7 +32,7 @@ export default function McpServers() {
   useEffect(() => { loadServers(); }, []);
 
   const resetForm = () => {
-    setForm({ name: '', transport_type: 'sse', url: '', api_key: '' });
+    setForm({ name: '', transport_type: 'sse', url: '', api_key: '', auth_type: 'bearer' });
     setEditingId(null);
     setShowForm(false);
   };
@@ -38,6 +43,7 @@ export default function McpServers() {
       transport_type: server.transport_type,
       url: server.url,
       api_key: server.api_key || '',
+      auth_type: server.auth_type || 'bearer',
     });
     setEditingId(server.id);
     setShowForm(true);
@@ -186,9 +192,26 @@ export default function McpServers() {
                 type="password"
                 value={form.api_key}
                 onChange={(e) => setForm((prev) => ({ ...prev, api_key: e.target.value }))}
-                placeholder="Bearer token（選填，加密儲存）"
+                placeholder="API 金鑰（選填，加密儲存）"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">認證方式</label>
+              <select
+                value={form.auth_type}
+                onChange={(e) => setForm((prev) => ({ ...prev, auth_type: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {AUTH_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                {form.auth_type === 'bearer'
+                  ? '使用 Authorization: Bearer <key> 標頭'
+                  : '使用 X-Api-Key: <key> 標頭'}
+              </p>
             </div>
             <div className="flex gap-2">
               <button
@@ -275,6 +298,11 @@ function ServerCard({ server, onEdit, onDelete, onToggle, onTest, onRefresh, tes
           <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
             {server.transport_type.toUpperCase()}
           </span>
+          {server.auth_type === 'x-api-key' && (
+            <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded">
+              X-Api-Key
+            </span>
+          )}
           <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
             {server.tool_count} 工具
           </span>

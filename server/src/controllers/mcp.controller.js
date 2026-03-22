@@ -8,7 +8,7 @@ const ENCRYPTED_FIELDS = ['api_key', 'custom_headers'];
 async function list(req, res, next) {
   try {
     const servers = await db('mcp_servers')
-      .select('id', 'name', 'transport_type', 'url', 'api_key', 'custom_headers', 'is_enabled', 'tools_cache', 'last_connected_at', 'created_at', 'updated_at')
+      .select('id', 'name', 'transport_type', 'url', 'api_key', 'custom_headers', 'auth_type', 'is_enabled', 'tools_cache', 'last_connected_at', 'created_at', 'updated_at')
       .orderBy('created_at', 'asc');
 
     const masked = servers.map((s) => {
@@ -31,7 +31,7 @@ async function list(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { name, transport_type, url, api_key, custom_headers } = req.body;
+    const { name, transport_type, url, api_key, custom_headers, auth_type } = req.body;
 
     if (!name || !url) {
       return res.status(400).json({ error: '名稱和 URL 為必填' });
@@ -43,6 +43,7 @@ async function create(req, res, next) {
       url,
       api_key: api_key ? encrypt(api_key) : null,
       custom_headers: custom_headers ? encrypt(JSON.stringify(custom_headers)) : null,
+      auth_type: auth_type || 'bearer',
       is_enabled: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -62,7 +63,7 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, transport_type, url, api_key, custom_headers, is_enabled } = req.body;
+    const { name, transport_type, url, api_key, custom_headers, is_enabled, auth_type } = req.body;
 
     const existing = await db('mcp_servers').where({ id }).first();
     if (!existing) {
@@ -75,6 +76,7 @@ async function update(req, res, next) {
     if (transport_type !== undefined) updates.transport_type = transport_type;
     if (url !== undefined) updates.url = url;
     if (is_enabled !== undefined) updates.is_enabled = is_enabled;
+    if (auth_type !== undefined) updates.auth_type = auth_type;
 
     // Only update encrypted fields if not the masked placeholder
     if (api_key !== undefined && api_key !== '***encrypted***') {

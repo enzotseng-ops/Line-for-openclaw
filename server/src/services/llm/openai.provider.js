@@ -1,4 +1,7 @@
 const OpenAI = require('openai');
+const logger = require('../../config/logger');
+
+const MAX_TOOL_ROUNDS = 5;
 
 function buildMessages(userMessage, conversationHistory, ragContext, systemPrompt) {
   const messages = [{ role: 'system', content: systemPrompt }];
@@ -20,19 +23,75 @@ function buildMessages(userMessage, conversationHistory, ragContext, systemPromp
   return messages;
 }
 
-async function generate(userMessage, conversationHistory, ragContext, settings) {
+async function generate(userMessage, conversationHistory, ragContext, settings, mcp = {}) {
   const clientOptions = { apiKey: settings.apiKey };
   if (settings.baseUrl) clientOptions.baseURL = settings.baseUrl;
   const client = new OpenAI(clientOptions);
 
-  const response = await client.chat.completions.create({
+  const messages = buildMessages(userMessage, conversationHistory, ragContext, settings.systemPrompt);
+  const hasTools = mcp.tools && mcp.tools.length > 0;
+
+  const requestParams = {
     model: settings.model,
     max_tokens: 1024,
-    messages: buildMessages(userMessage, conversationHistory, ragContext, settings.systemPrompt),
-  });
+    messages,
+  };
+  if (hasTools) {
+    requestParams.tools = mcp.tools;
+  }
+
+  let response = await client.chat.completions.create(requestParams);
+  let message = response.choices[0].message;
+
+  // Tool-calling loop
+  let rounds = 0;
+  while (message.tool_calls && message.tool_calls.length > 0 && rounds < MAX_TOOL_ROUNDS) {
+    rounds++;
+
+    // Add assistant message with tool calls
+    messages.push(message);
+
+    // Execute each tool call
+    for (const toolCall of message.tool_calls) {
+      const fnName = toolCall.function.name;
+      let args = {};
+      try {
+        args = JSON.parse(toolCall.function.arguments || '{}');
+      } catch {
+        // ignore parse error
+      }
+
+      try {
+        logger.info(`MCP tool call: ${fnName} (round ${rounds})`);
+        const result = await mcp.callTool(fnName, args);
+        const textContent = (result.content || [])
+          .filter((c) => c.type === 'text')
+          .map((c) => c.text)
+          .join('\n');
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: textContent || JSON.stringify(result),
+        });
+      } catch (err) {
+        logger.warn(`MCP tool call failed: ${fnName} — ${err.message}`);
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: `Error: ${err.message}`,
+        });
+      }
+    }
+
+    response = await client.chat.completions.create({
+      ...requestParams,
+      messages,
+    });
+    message = response.choices[0].message;
+  }
 
   return {
-    text: response.choices[0].message.content,
+    text: message.content || '',
     model: settings.model,
   };
 }
@@ -41,7 +100,7 @@ async function test(settings) {
   const clientOptions = { apiKey: settings.apiKey };
   if (settings.baseUrl) clientOptions.baseURL = settings.baseUrl;
   const client = new OpenAI(clientOptions);
-  const response = await client.chat.completions.create({
+  await client.chat.completions.create({
     model: settings.model,
     max_tokens: 10,
     messages: [{ role: 'user', content: 'Hi' }],

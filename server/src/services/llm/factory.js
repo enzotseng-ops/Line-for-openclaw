@@ -2,6 +2,8 @@ const { getSetting } = require('../settings.service');
 const claudeProvider = require('./claude.provider');
 const openaiProvider = require('./openai.provider');
 const customProvider = require('./custom.provider');
+const { getAllTools, callTool } = require('../mcp.service');
+const logger = require('../../config/logger');
 
 // OpenAI-compatible base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -27,24 +29,74 @@ async function getLLMSettings() {
   };
 }
 
+/**
+ * Convert MCP tools to Claude tool format.
+ */
+function toClaudeTools(mcpTools) {
+  return mcpTools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.inputSchema,
+  }));
+}
+
+/**
+ * Convert MCP tools to OpenAI tool format.
+ */
+function toOpenAITools(mcpTools) {
+  return mcpTools.map((t) => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.inputSchema,
+    },
+  }));
+}
+
 async function generateReply(userMessage, conversationHistory, ragContext) {
   const settings = await getLLMSettings();
 
+  // Fetch MCP tools from all enabled servers
+  let mcpTools = [];
+  try {
+    mcpTools = await getAllTools();
+  } catch (err) {
+    logger.warn(`MCP tool discovery failed: ${err.message}`);
+  }
+
+  const mcp = { callTool };
+
   switch (settings.provider) {
     case 'claude':
-      return claudeProvider.generate(userMessage, conversationHistory, ragContext, settings);
+      return claudeProvider.generate(userMessage, conversationHistory, ragContext, settings, {
+        tools: toClaudeTools(mcpTools),
+        ...mcp,
+      });
     case 'openai':
-      return openaiProvider.generate(userMessage, conversationHistory, ragContext, settings);
+      return openaiProvider.generate(userMessage, conversationHistory, ragContext, settings, {
+        tools: toOpenAITools(mcpTools),
+        ...mcp,
+      });
     case 'gemini':
     case 'minimax':
       return openaiProvider.generate(userMessage, conversationHistory, ragContext, {
         ...settings,
         baseUrl: PROVIDER_BASE_URLS[settings.provider],
+      }, {
+        tools: toOpenAITools(mcpTools),
+        ...mcp,
       });
     case 'custom':
-      return customProvider.generate(userMessage, conversationHistory, ragContext, settings);
+      return customProvider.generate(userMessage, conversationHistory, ragContext, settings, {
+        tools: toOpenAITools(mcpTools),
+        ...mcp,
+      });
     default:
-      return claudeProvider.generate(userMessage, conversationHistory, ragContext, settings);
+      return claudeProvider.generate(userMessage, conversationHistory, ragContext, settings, {
+        tools: toClaudeTools(mcpTools),
+        ...mcp,
+      });
   }
 }
 

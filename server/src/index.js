@@ -98,6 +98,7 @@ app.use('/api/messages', require('./routes/messages.routes'));
 app.use('/api/schedules', require('./routes/schedules.routes'));
 app.use('/api/settings', require('./routes/settings.routes'));
 app.use('/api/files', require('./routes/files.routes'));
+app.use('/api/mcp', require('./routes/mcp.routes'));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));

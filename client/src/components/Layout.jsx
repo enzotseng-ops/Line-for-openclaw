@@ -9,6 +9,7 @@ const navItems = [
   { path: '/messages', label: '訊息紀錄', icon: '💬' },
   { path: '/schedules', label: '排程設定', icon: '🕐' },
   { path: '/knowledge', label: '知識庫', icon: '📚' },
+  { path: '/mcp', label: 'MCP 工具', icon: '🔌' },
   { path: '/settings', label: '系統設定', icon: '⚙️' },
 ];
 

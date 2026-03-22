@@ -11,6 +11,7 @@ import Messages from './pages/Messages';
 import Schedules from './pages/Schedules';
 import Knowledge from './pages/Knowledge';
 import Settings from './pages/Settings';
+import McpServers from './pages/McpServers';
 import ChangePassword from './pages/ChangePassword';
 import api from './services/api';
 
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
           <Route path="/schedules" element={<PrivateRoute><Schedules /></PrivateRoute>} />
           <Route path="/knowledge" element={<PrivateRoute><Knowledge /></PrivateRoute>} />
+          <Route path="/mcp" element={<PrivateRoute><McpServers /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="*" element={<DefaultRedirect />} />
         </Routes>

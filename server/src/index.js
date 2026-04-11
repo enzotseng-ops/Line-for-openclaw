@@ -15,6 +15,12 @@ fs.mkdirSync(path.join(__dirname, '../uploads/knowledge'), { recursive: true });
 
 const app = express();
 
+// Serve React frontend (built files from client/dist) — before CORS so static assets are never blocked
+const clientDist = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+}
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: false,  // React SPA manages its own CSP
@@ -92,11 +98,8 @@ app.use('/api/mcp', require('./routes/mcp.routes'));
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
-// Serve React frontend (built files from client/dist)
-const clientDist = path.join(__dirname, '../../client/dist');
+// SPA fallback: all non-API routes serve index.html
 if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  // SPA fallback: all non-API routes serve index.html
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
       return next();

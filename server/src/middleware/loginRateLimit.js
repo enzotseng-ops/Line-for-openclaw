@@ -10,6 +10,7 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.SETUP_MODE === 'true',
   message: { error: '登入嘗試過多，請 15 分鐘後再試。' },
   handler: (req, res, next, options) => {
     logger.warn(`Login rate limit exceeded: ip=${req.ip}, email=${req.body?.email || 'unknown'}`);
@@ -26,6 +27,7 @@ const registerLimiter = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.SETUP_MODE === 'true',
   message: { error: '註冊嘗試過多，請 1 小時後再試。' },
   handler: (req, res, next, options) => {
     logger.warn(`Register rate limit exceeded: ip=${req.ip}`);

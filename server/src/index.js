@@ -14,6 +14,7 @@ const { loginLimiter, registerLimiter } = require('./middleware/loginRateLimit')
 fs.mkdirSync(path.join(__dirname, '../uploads/knowledge'), { recursive: true });
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Zeabur, Cloudflare, etc.)
 
 // Serve React frontend (built files from client/dist) — before CORS so static assets are never blocked
 const clientDist = path.join(__dirname, '../../client/dist');

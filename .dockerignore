@@ -1,9 +1,0 @@
-node_modules
-server/node_modules
-client/node_modules
-client/dist
-.env
-.env.backup
-*.md
-.git
-.claude

@@ -88,9 +88,14 @@ async function status(req, res, next) {
  */
 async function configureDatabase(req, res, next) {
   try {
-    // Security: only allow during setup mode
-    if (process.env.SETUP_MODE !== 'true') {
-      return res.status(403).json({ error: 'Not in setup mode' });
+    // Security: only allow when DB is not yet working
+    if (db.isConfigured()) {
+      try {
+        await db.raw('SELECT 1');
+        return res.status(403).json({ error: 'Database is already configured and connected' });
+      } catch {
+        // DB is configured but connection failed — allow reconfiguration
+      }
     }
 
     const { databaseUrl } = req.body;

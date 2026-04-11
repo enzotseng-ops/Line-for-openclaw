@@ -246,19 +246,21 @@ export default function Setup() {
           )}
 
           {/* Step 1: Environment / Database Setup */}
-          {currentStep === 1 && (
+          {currentStep === 1 && (() => {
+            const dbNeeded = status?.setupMode || !status?.database?.configured;
+            return (
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-xl font-bold text-gray-800">
-                  {status?.setupMode ? '資料庫設定' : '環境檢查'}
+                  {dbNeeded ? '資料庫設定' : '環境檢查'}
                 </h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  {status?.setupMode ? '輸入 PostgreSQL 連線字串以開始' : '確認基礎環境已就緒'}
+                  {dbNeeded ? '輸入 PostgreSQL 連線字串以開始' : '確認基礎環境已就緒'}
                 </p>
               </div>
 
-              {status?.setupMode ? (
-                /* Setup Mode: show DATABASE_URL input form */
+              {dbNeeded ? (
+                /* DB not connected: show DATABASE_URL input form */
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">PostgreSQL 連線字串</label>
@@ -284,13 +286,13 @@ export default function Setup() {
                   </div>
                 </div>
               ) : (
-                /* Normal Mode: show read-only status */
+                /* DB connected: show read-only status */
                 <div className="space-y-3">
                   <StatusRow
                     label="資料庫連線"
                     description="PostgreSQL 連線是否正常"
-                    ok={status?.database?.configured}
-                    errorHint="請確認 DATABASE_URL 是否正確"
+                    ok={true}
+                    errorHint=""
                   />
                   <StatusRow
                     label="後端服務"
@@ -298,14 +300,6 @@ export default function Setup() {
                     ok={true}
                     errorHint=""
                   />
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                    <p className="font-medium">環境變數：</p>
-                    <ul className="mt-1 space-y-0.5 text-xs text-blue-700">
-                      <li><code className="bg-blue-100 px-1 rounded">DATABASE_URL</code> — PostgreSQL 連線字串（必填）</li>
-                      <li><code className="bg-blue-100 px-1 rounded">JWT_SECRET</code> — 首次啟動自動產生</li>
-                      <li><code className="bg-blue-100 px-1 rounded">ENCRYPTION_KEY</code> — 首次啟動自動產生</li>
-                    </ul>
-                  </div>
                 </div>
               )}
 
@@ -313,7 +307,7 @@ export default function Setup() {
                 <button onClick={() => setCurrentStep(0)} className="flex-1 border border-gray-300 rounded-xl py-2.5 text-sm hover:bg-gray-50">
                   上一步
                 </button>
-                {status?.setupMode ? (
+                {dbNeeded ? (
                   <button
                     onClick={async () => {
                       if (!dbUrl.trim()) {
@@ -340,23 +334,16 @@ export default function Setup() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      if (status?.database?.configured) {
-                        setCurrentStep(status?.admin?.configured ? 3 : 2);
-                      } else {
-                        checkStatus();
-                        toast.error('資料庫連線失敗，請檢查 DATABASE_URL');
-                      }
-                    }}
-                    disabled={!status?.database?.configured}
-                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+                    onClick={() => setCurrentStep(status?.admin?.configured ? 3 : 2)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
                   >
                     下一步
                   </button>
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Step 2: Admin Account */}
           {currentStep === 2 && (

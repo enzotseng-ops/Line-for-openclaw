@@ -17,7 +17,7 @@ function ensureEnv() {
   if (!process.env.DATABASE_URL) {
     process.env.SETUP_MODE = 'true';
     console.log('[env] DATABASE_URL not set — starting in Setup Mode');
-    console.log('[env] Open http://localhost:' + (process.env.PORT || 3000) + ' to configure');
+    console.log('[env] Open http://localhost:' + (process.env.PORT || 8080) + ' to configure');
   }
 
   let envContent = '';

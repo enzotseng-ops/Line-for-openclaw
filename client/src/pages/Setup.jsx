@@ -22,6 +22,8 @@ export default function Setup() {
   const [saving, setSaving] = useState(false);
 
   // Form states
+  const [dbUrl, setDbUrl] = useState('');
+  const [dbTesting, setDbTesting] = useState(false);
   const [adminForm, setAdminForm] = useState({ email: '', password: '', name: '' });
   const [lineForm, setLineForm] = useState({ channelSecret: '', channelAccessToken: '' });
   const [llmForm, setLlmForm] = useState({ provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash' });
@@ -45,13 +47,13 @@ export default function Setup() {
       // Auto-advance to first incomplete step
       if (res.data.setupComplete) {
         setCurrentStep(5); // complete
-      } else if (!res.data.database) {
-        setCurrentStep(1); // environment
-      } else if (!res.data.admin) {
+      } else if (res.data.setupMode || !res.data.database?.configured) {
+        setCurrentStep(1); // environment / database setup
+      } else if (!res.data.admin?.configured) {
         setCurrentStep(2); // admin
-      } else if (!res.data.line) {
+      } else if (!res.data.line?.configured) {
         setCurrentStep(3); // line
-      } else if (!res.data.llm) {
+      } else if (!res.data.llm?.configured) {
         setCurrentStep(4); // llm
       }
     } catch {
@@ -228,7 +230,7 @@ export default function Setup() {
 
               <div className="bg-gray-50 rounded-xl p-4 text-left space-y-3">
                 <p className="text-sm font-medium text-gray-700">開始前，請確認你已準備好：</p>
-                <ChecklistItem label="PostgreSQL 資料庫連線字串" hint="已填入 server/.env 的 DATABASE_URL" />
+                <ChecklistItem label="PostgreSQL 資料庫" hint="下一步透過網頁設定連線字串" />
                 <ChecklistItem label="LINE Developers Console 帳號" hint="需要 Messaging API Channel 的 Secret + Token" />
                 <ChecklistItem label="AI 模型 API Key" hint="Gemini / OpenAI / Claude 任選一個" />
                 <ChecklistItem label="Node.js 18+ 執行環境" hint="後端 + 前端都需要" />
@@ -243,56 +245,115 @@ export default function Setup() {
             </div>
           )}
 
-          {/* Step 1: Environment Check */}
+          {/* Step 1: Environment / Database Setup */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-800">環境檢查</h2>
-                <p className="text-gray-500 text-sm mt-1">確認基礎環境已就緒</p>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {status?.setupMode ? '資料庫設定' : '環境檢查'}
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  {status?.setupMode ? '輸入 PostgreSQL 連線字串以開始' : '確認基礎環境已就緒'}
+                </p>
               </div>
 
-              <div className="space-y-3">
-                <StatusRow
-                  label="資料庫連線"
-                  description="PostgreSQL 連線是否正常"
-                  ok={status?.database}
-                  errorHint="請確認 server/.env 中 DATABASE_URL 是否正確，並執行 npm run migrate"
-                />
-                <StatusRow
-                  label="後端服務"
-                  description="Express API 是否運行中"
-                  ok={true}
-                  errorHint=""
-                />
+              {status?.setupMode ? (
+                /* Setup Mode: show DATABASE_URL input form */
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PostgreSQL 連線字串</label>
+                    <input
+                      type="text"
+                      value={dbUrl}
+                      onChange={(e) => setDbUrl(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                      placeholder="postgresql://user:pass@host:5432/dbname"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      格式：postgresql://帳號:密碼@主機:埠號/資料庫名稱
+                    </p>
+                  </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                  <p className="font-medium">server/.env 必填環境變數：</p>
-                  <ul className="mt-1 space-y-0.5 text-xs text-blue-700">
-                    <li><code className="bg-blue-100 px-1 rounded">DATABASE_URL</code> — PostgreSQL 連線字串</li>
-                    <li><code className="bg-blue-100 px-1 rounded">JWT_SECRET</code> — JWT 簽名金鑰（上線前務必替換）</li>
-                    <li><code className="bg-blue-100 px-1 rounded">ENCRYPTION_KEY</code> — AES-256 加密金鑰（64 hex 字元）</li>
-                  </ul>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <p className="font-medium">自動處理項目：</p>
+                    <ul className="mt-1 space-y-0.5 text-xs text-blue-700">
+                      <li><code className="bg-blue-100 px-1 rounded">JWT_SECRET</code> — 已自動產生</li>
+                      <li><code className="bg-blue-100 px-1 rounded">ENCRYPTION_KEY</code> — 已自動產生</li>
+                      <li>Database Migration — 連線成功後自動執行</li>
+                    </ul>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Normal Mode: show read-only status */
+                <div className="space-y-3">
+                  <StatusRow
+                    label="資料庫連線"
+                    description="PostgreSQL 連線是否正常"
+                    ok={status?.database?.configured}
+                    errorHint="請確認 DATABASE_URL 是否正確"
+                  />
+                  <StatusRow
+                    label="後端服務"
+                    description="Express API 是否運行中"
+                    ok={true}
+                    errorHint=""
+                  />
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <p className="font-medium">環境變數：</p>
+                    <ul className="mt-1 space-y-0.5 text-xs text-blue-700">
+                      <li><code className="bg-blue-100 px-1 rounded">DATABASE_URL</code> — PostgreSQL 連線字串（必填）</li>
+                      <li><code className="bg-blue-100 px-1 rounded">JWT_SECRET</code> — 首次啟動自動產生</li>
+                      <li><code className="bg-blue-100 px-1 rounded">ENCRYPTION_KEY</code> — 首次啟動自動產生</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button onClick={() => setCurrentStep(0)} className="flex-1 border border-gray-300 rounded-xl py-2.5 text-sm hover:bg-gray-50">
                   上一步
                 </button>
-                <button
-                  onClick={() => {
-                    if (status?.database) {
-                      setCurrentStep(status?.admin ? 3 : 2);
-                    } else {
-                      checkStatus();
-                      toast.error('資料庫連線失敗，請檢查 DATABASE_URL');
-                    }
-                  }}
-                  disabled={!status?.database}
-                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
-                >
-                  下一步
-                </button>
+                {status?.setupMode ? (
+                  <button
+                    onClick={async () => {
+                      if (!dbUrl.trim()) {
+                        toast.error('請輸入連線字串');
+                        return;
+                      }
+                      setDbTesting(true);
+                      try {
+                        await api.post('/setup/database', { databaseUrl: dbUrl.trim() });
+                        toast.success('資料庫連線成功，Migration 已完成');
+                        await checkStatus();
+                        setCurrentStep(2);
+                      } catch (err) {
+                        const detail = err.response?.data?.detail || err.response?.data?.error || '連線失敗';
+                        toast.error(detail);
+                      } finally {
+                        setDbTesting(false);
+                      }
+                    }}
+                    disabled={dbTesting || !dbUrl.trim()}
+                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+                  >
+                    {dbTesting ? '連線測試中...' : '測試並連線'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (status?.database?.configured) {
+                        setCurrentStep(status?.admin?.configured ? 3 : 2);
+                      } else {
+                        checkStatus();
+                        toast.error('資料庫連線失敗，請檢查 DATABASE_URL');
+                      }
+                    }}
+                    disabled={!status?.database?.configured}
+                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+                  >
+                    下一步
+                  </button>
+                )}
               </div>
             </div>
           )}

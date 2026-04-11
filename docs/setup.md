@@ -9,7 +9,43 @@
 
 ---
 
+## 零配置啟動（推薦）
+
+本專案支援**完全零配置啟動** — 不需要手動建立 `.env` 檔案，打開瀏覽器就能透過設定精靈完成所有配置。
+
+### 快速開始
+
+```bash
+# 1. 安裝依賴
+cd server && npm install
+cd ../client && npm install && npm run build
+
+# 2. 直接啟動（不需要 .env）
+cd ../server && npm run dev
+```
+
+啟動後 console 會顯示：
+```
+[env] DATABASE_URL not set — starting in Setup Mode
+[env] Open http://localhost:3000 to configure
+[env] Auto-generated JWT_SECRET and saved to .env
+[env] Auto-generated ENCRYPTION_KEY and saved to .env
+```
+
+打開 http://localhost:3000，設定精靈會引導你完成：
+
+1. **資料庫設定** — 輸入 PostgreSQL 連線字串，系統自動測試連線並執行 Migration
+2. **管理員帳號** — 建立第一個管理員帳號
+3. **LINE 串接** — 填入 Channel Secret + Access Token（可跳過）
+4. **AI 模型** — 選擇 Gemini / OpenAI / Claude，填入 API Key（可跳過）
+
+> **JWT_SECRET** 和 **ENCRYPTION_KEY** 會在首次啟動時自動產生並存入 `.env`，不需要手動設定。
+
+---
+
 ## 環境變數（`server/.env`）
+
+> 如果使用上方的零配置啟動，`.env` 會自動產生，此段僅供手動配置或進階調整參考。
 
 從範本複製：
 ```bash
@@ -19,61 +55,58 @@ cd server && cp .env.example .env
 | 變數 | 必填 | 說明 | 備註 |
 |------|------|------|------|
 | `PORT` | | 後端服務埠 | 預設 3000 |
-| `DATABASE_URL` | **必填** | PostgreSQL 連線字串 | 格式：`postgresql://user:pass@host:port/dbname` |
-| `JWT_SECRET` | **必填** | JWT 簽名金鑰 | 見下方說明 |
-| `ENCRYPTION_KEY` | **必填** | AES-256-GCM 加密金鑰 | 見下方說明 |
+| `DATABASE_URL` | 首次啟動透過 Web 設定 | PostgreSQL 連線字串 | 格式：`postgresql://user:pass@host:port/dbname` |
+| `JWT_SECRET` | 自動產生 | JWT 簽名金鑰 | 首次啟動自動產生並存入 `.env` |
+| `ENCRYPTION_KEY` | 自動產生 | AES-256-GCM 加密金鑰 | 首次啟動自動產生並存入 `.env`，**請務必備份** |
 | `LINE_CHANNEL_SECRET` | | LINE Channel Secret（Fallback） | 優先從 DB 讀取 |
 | `LINE_CHANNEL_ACCESS_TOKEN` | | LINE Channel Access Token（Fallback） | 優先從 DB 讀取 |
 | `GOOGLE_AI_API_KEY` | | Google Gemini API Key（Fallback） | 優先從 DB 讀取 |
 
 > **設定優先順序**：管理後台 Settings 頁面寫入 DB → DB 讀取 → `.env` 環境變數 fallback
 
-### JWT_SECRET（重要！）
+### JWT_SECRET
 
 **用途**：簽署和驗證管理員登入的 JWT Token。
 
-**風險**：如果使用預設值或被他人取得，任何人都能偽造管理員身份登入後台。
-
-**規則**：
-- 系統啟動時會檢查此值，**不能留空**，也**不能使用 `.env.example` 裡的預設值**
-- 使用預設值 `your-jwt-secret-key-change-in-production` 時，server 會拒絕啟動
+**行為**：
+- 首次啟動時自動產生（`crypto.randomBytes(48).toString('base64')`）
+- 如果手動設定了 `.env.example` 的預設值 `your-jwt-secret-key-change-in-production`，會被自動替換為安全隨機值
 - 更換後，所有已登入的 session 會失效，需重新登入
 
-**生成方式**：
+**手動生成方式**（通常不需要）：
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 ```
 
-### ENCRYPTION_KEY（重要！）
+### ENCRYPTION_KEY
 
 **用途**：用 AES-256-GCM 加密儲存在資料庫中的敏感設定（LINE Channel Secret、Access Token、LLM API Key 等）。
 
-**風險**：如果遺失此 key，已加密的設定將無法解密，需要重新填入所有 API 金鑰。
+**行為**：
+- 首次啟動時自動產生（`crypto.randomBytes(32).toString('hex')`，64 個十六進位字元）
+- **請務必備份此值** — 如果遺失，已加密的設定將無法解密，需要重新填入所有 API 金鑰
 
-**規則**：
-- 必須是 **64 個十六進位字元**（= 32 bytes）
-- 系統啟動時會檢查，**未設定則拒絕啟動**
-- **請務必備份此值**，更換後舊資料無法解密
-
-**生成方式**：
+**手動生成方式**（通常不需要）：
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 啟動檢查
+### 啟動行為
 
-系統啟動時會自動檢查以下項目，任一不通過則拒絕啟動並顯示錯誤訊息：
+| 環境變數狀態 | 行為 |
+|-------------|------|
+| `DATABASE_URL` 未設定 | 進入 **Setup Mode**，透過 Web 精靈設定 |
+| `DATABASE_URL` 已設定 | 正常啟動 |
+| `JWT_SECRET` 未設定或為預設值 | 自動產生並存入 `.env` |
+| `ENCRYPTION_KEY` 未設定 | 自動產生並存入 `.env` |
 
-| 檢查項目 | 錯誤訊息 |
-|----------|---------|
-| `DATABASE_URL` 未設定 | `Missing required environment variable: DATABASE_URL` |
-| `JWT_SECRET` 未設定 | `Missing required environment variable: JWT_SECRET` |
-| `JWT_SECRET` 為預設值 | `JWT_SECRET is still the default placeholder` |
-| `ENCRYPTION_KEY` 未設定 | `Missing required environment variable: ENCRYPTION_KEY` |
+> Setup Mode 下，除了 `/api/setup/*` 和 `/api/auth/*` 之外的所有 API 路由會回傳 503，直到資料庫設定完成。
 
 ---
 
-## 安裝步驟
+## 安裝步驟（手動配置方式）
+
+> 如果你偏好手動配置而非零配置啟動，可以按照以下步驟操作。
 
 ### Step 1：安裝依賴
 
@@ -90,13 +123,13 @@ cd ../client && npm install
 ```bash
 cd ../server
 cp .env.example .env
-# 用編輯器填入 DATABASE_URL、JWT_SECRET、ENCRYPTION_KEY
+# 填入 DATABASE_URL（JWT_SECRET 和 ENCRYPTION_KEY 可留空，啟動時自動產生）
 ```
 
 ### Step 3：建立資料庫
 
 ```bash
-# 執行所有 migration（建立 6 張表 + seed 預設管理員和設定）
+# 執行所有 migration（建立資料表 + seed 預設管理員和設定）
 npm run migrate
 ```
 
@@ -120,7 +153,7 @@ cd client && npm run dev
 
 首次開啟瀏覽器訪問系統時，會自動偵測設定狀態並導向安裝精靈（`/setup`）。安裝精靈會引導你完成：
 
-1. **環境檢查** — 確認資料庫連線正常
+1. **資料庫設定** — 確認連線正常（若透過 Web 設定，會自動測試並執行 Migration）
 2. **管理員帳號** — 建立新帳號或用預設帳號登入
 3. **LINE 串接** — 填入 Channel Secret + Access Token，可即時測試
 4. **AI 模型** — 選擇 Gemini / OpenAI / Claude，填入 API Key，可即時測試

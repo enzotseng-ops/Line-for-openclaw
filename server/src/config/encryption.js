@@ -1,10 +1,16 @@
 const crypto = require('crypto');
 
 const ALGORITHM = 'aes-256-gcm';
-if (!process.env.ENCRYPTION_KEY) {
-  throw new Error('ENCRYPTION_KEY environment variable is required (64-char hex string)');
+
+// ENCRYPTION_KEY is guaranteed by ensureEnv() at startup.
+// Defensive fallback for standalone require (tests, scripts).
+let KEY;
+if (process.env.ENCRYPTION_KEY) {
+  KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+} else {
+  console.warn('[encryption] ENCRYPTION_KEY not set — using ephemeral key for this session');
+  KEY = crypto.randomBytes(32);
 }
-const KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
 function encrypt(text) {
   if (!text) return '';

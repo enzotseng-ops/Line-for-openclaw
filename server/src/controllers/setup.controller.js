@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+const knexLib = require('knex');
 const db = require('../config/db');
 const { encrypt } = require('../config/encryption');
 const { invalidate, getSetting } = require('../services/settings.service');
@@ -10,12 +13,18 @@ const logger = require('../config/logger');
 async function status(req, res, next) {
   try {
     const checks = {
+      setupMode: process.env.SETUP_MODE === 'true',
       database: { configured: false, verified: false },
       admin: { configured: false },
       line: { configured: false, verified: false, error: null },
       llm: { configured: false, verified: false, error: null },
       setupComplete: false,
     };
+
+    // If DB not configured yet, return early
+    if (!db.isConfigured()) {
+      return res.json(checks);
+    }
 
     // 1. Database connectivity
     try {
@@ -74,6 +83,80 @@ async function status(req, res, next) {
 }
 
 /**
+ * Configure database connection — only available during setup mode.
+ * Tests connection, saves to .env, reinitializes knex, runs migrations.
+ */
+async function configureDatabase(req, res, next) {
+  try {
+    // Security: only allow during setup mode
+    if (process.env.SETUP_MODE !== 'true') {
+      return res.status(403).json({ error: 'Not in setup mode' });
+    }
+
+    const { databaseUrl } = req.body;
+    if (!databaseUrl) {
+      return res.status(400).json({ error: 'databaseUrl is required' });
+    }
+
+    // 1. Test connection with a temporary knex instance
+    const testDb = knexLib({
+      client: 'postgresql',
+      connection: databaseUrl,
+      pool: { min: 1, max: 2 },
+      acquireConnectionTimeout: 10000,
+    });
+
+    try {
+      await testDb.raw('SELECT 1');
+    } catch (err) {
+      await testDb.destroy().catch(() => {});
+      return res.status(400).json({
+        error: 'Database connection failed',
+        detail: err.message,
+      });
+    }
+    await testDb.destroy().catch(() => {});
+
+    // 2. Save to .env file
+    const ENV_PATH = path.join(__dirname, '../../.env');
+    let envContent = '';
+    try { envContent = fs.readFileSync(ENV_PATH, 'utf8'); } catch { /* no file yet */ }
+
+    const regex = /^DATABASE_URL=.*$/m;
+    const line = `DATABASE_URL=${databaseUrl}`;
+    envContent = regex.test(envContent)
+      ? envContent.replace(regex, line)
+      : envContent.trimEnd() + '\n' + line + '\n';
+
+    try {
+      fs.writeFileSync(ENV_PATH, envContent, 'utf8');
+    } catch (err) {
+      logger.warn(`[setup] Could not write .env: ${err.message}`);
+    }
+
+    // 3. Set in current process
+    process.env.DATABASE_URL = databaseUrl;
+
+    // 4. Reinitialize the shared db instance
+    db.reinitialize(databaseUrl);
+
+    // 5. Run migrations
+    await db.migrate.latest({
+      directory: path.join(__dirname, '../migrations'),
+    });
+
+    // 6. Exit setup mode
+    delete process.env.SETUP_MODE;
+
+    logger.info('Database configured and migrations completed via setup wizard');
+    res.json({ success: true, message: 'Database configured and migrations completed' });
+  } catch (err) {
+    logger.logError('Database setup failed', err);
+    next(err);
+  }
+}
+
+/**
  * Batch initialize settings — requires auth.
  * Accepts an object of key-value pairs to save into system_settings.
  */
@@ -116,4 +199,4 @@ async function initialize(req, res, next) {
   }
 }
 
-module.exports = { status, initialize };
+module.exports = { status, initialize, configureDatabase };

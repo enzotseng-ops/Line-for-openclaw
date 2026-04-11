@@ -3,10 +3,7 @@ require('dotenv').config();
 module.exports = {
   development: {
     client: 'postgresql',
-    connection: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    },
+    connection: process.env.DATABASE_URL,
     migrations: {
       directory: './src/migrations',
     },
@@ -16,10 +13,7 @@ module.exports = {
   },
   production: {
     client: 'postgresql',
-    connection: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    },
+    connection: process.env.DATABASE_URL,
     migrations: {
       directory: './src/migrations',
     },

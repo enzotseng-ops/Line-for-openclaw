@@ -25,45 +25,7 @@ if (fs.existsSync(clientDist)) {
 app.use(helmet({
   contentSecurityPolicy: false,  // React SPA manages its own CSP
 }));
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow no-origin (curl, Postman, same-origin)
-    if (!origin) return callback(null, true);
-
-    // Exact matches: env-configured origins + common dev ports
-    const allowed = [
-      process.env.CLIENT_URL,
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-    ].filter(Boolean);
-    if (allowed.includes(origin)) return callback(null, true);
-
-    // Wildcard subdomain patterns from CORS_ALLOWED_ORIGINS env
-    // e.g. CORS_ALLOWED_ORIGINS=*.openclaw-gb.com,*.example.com
-    const patterns = (process.env.CORS_ALLOWED_ORIGINS || '*.openclaw-gb.com,*.zeabur.app')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean);
-
-    try {
-      const originHostname = new URL(origin).hostname;
-      const matched = patterns.some((pattern) => {
-        if (pattern.startsWith('*.')) {
-          const suffix = pattern.slice(1); // ".openclaw-gb.com"
-          return originHostname.endsWith(suffix) || originHostname === suffix.slice(1);
-        }
-        return originHostname === pattern;
-      });
-      if (matched) return callback(null, true);
-    } catch {
-      // invalid origin URL
-    }
-
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+app.use(cors());
 
 // Body parsing (webhook route handles its own raw body)
 app.use((req, res, next) => {

@@ -9,7 +9,10 @@ function createInstance(connectionUrl) {
   }
   instance = knex({
     client: 'postgresql',
-    connection: connectionUrl,
+    connection: {
+      connectionString: connectionUrl,
+      ssl: { rejectUnauthorized: false },
+    },
     pool: { min: 2, max: 10 },
   });
   return instance;

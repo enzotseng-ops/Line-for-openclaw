@@ -112,8 +112,19 @@ if (fs.existsSync(clientDist)) {
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`Server running on port ${PORT}`);
+
+  // Auto-run migrations on startup when DB is configured
+  if (process.env.DATABASE_URL) {
+    try {
+      const db = require('./config/db');
+      await db.migrate.latest({ directory: path.join(__dirname, 'migrations') });
+      logger.info('Database migrations up to date');
+    } catch (err) {
+      logger.error(`Migration failed: ${err.message}`);
+    }
+  }
 });
 
 module.exports = app;

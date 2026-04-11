@@ -101,7 +101,10 @@ async function configureDatabase(req, res, next) {
     // 1. Test connection with a temporary knex instance
     const testDb = knexLib({
       client: 'postgresql',
-      connection: databaseUrl,
+      connection: {
+        connectionString: databaseUrl,
+        ssl: { rejectUnauthorized: false },
+      },
       pool: { min: 1, max: 2 },
       acquireConnectionTimeout: 10000,
     });

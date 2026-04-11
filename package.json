@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "LINE 智能客服系統 - 無毒農",
   "scripts": {
+    "start": "cd server && node src/index.js",
+    "build": "cd client && npm install && npm run build && cd ../server && npm install",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
     "install:all": "cd server && npm install && cd ../client && npm install",

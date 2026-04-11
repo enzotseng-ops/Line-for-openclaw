@@ -1,10 +1,10 @@
 # API 端點
 
-所有 API 以 `/api` 為前綴。除 auth、webhook、setup/status 外，其餘端點需要 JWT Bearer Token。
+所有 API 以 `/api` 為前綴。除 auth、webhook、setup/status、setup/database 外，其餘端點需要 JWT Bearer Token。
 
 ### 速率限制回應標頭
 
-登入和註冊端點會回傳標準速率限制標頭：
+登入和註冊端點會回傳標準速率限制標頭（Setup 模式下自動跳過）：
 
 | Header | 說明 |
 |--------|------|
@@ -16,21 +16,31 @@
 
 ## 初始設定
 
-| 方法 | 路徑 | 說明 |
-|------|------|------|
-| GET | `/api/setup/status` | 系統設定狀態檢查（無需登入） |
-| POST | `/api/setup/initialize` | 批次儲存設定（需登入） |
+| 方法 | 路徑 | Auth | 說明 |
+|------|------|------|------|
+| GET | `/api/setup/status` | 無 | 系統設定狀態檢查（含 `setupMode` 欄位） |
+| POST | `/api/setup/database` | 無 | 設定資料庫連線（測試 → 存 .env → reinitialize → migration） |
+| POST | `/api/setup/initialize` | JWT | 批次儲存設定 |
 
 `GET /api/setup/status` 回傳：
 ```json
 {
-  "database": true,
-  "admin": true,
-  "line": false,
-  "llm": true,
+  "setupMode": false,
+  "database": { "configured": true, "verified": true },
+  "admin": { "configured": true },
+  "line": { "configured": false, "verified": false, "error": null },
+  "llm": { "configured": true, "verified": true, "error": null },
   "setupComplete": false
 }
 ```
+
+`POST /api/setup/database` 請求：
+```json
+{ "databaseUrl": "postgresql://user:pass@host:5432/dbname" }
+```
+- 成功：200 `{ "success": true, "message": "Database configured and migrations completed" }`
+- 連線失敗：400 `{ "error": "Database connection failed", "detail": "..." }`
+- DB 已正常連線：403 `{ "error": "Database is already configured and connected" }`
 
 ## 認證
 
@@ -91,17 +101,30 @@
 | POST | `/api/files` | 上傳檔案（multipart/form-data） |
 | DELETE | `/api/files/:id` | 刪除檔案 |
 
+## MCP Server 管理
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | `/api/mcp` | MCP Server 列表（api_key 遮蔽） |
+| POST | `/api/mcp` | 新增 MCP Server |
+| PUT | `/api/mcp/:id` | 更新 MCP Server |
+| DELETE | `/api/mcp/:id` | 刪除 MCP Server |
+| POST | `/api/mcp/:id/test` | 測試 MCP Server 連線 |
+| POST | `/api/mcp/:id/refresh-tools` | 重新發現工具 |
+
 ---
 
 ## 管理後台頁面
 
 | 路由 | 功能 |
 |------|------|
-| `/setup` | 初次啟動安裝精靈（未設定完成時自動導向） |
+| `/setup` | 初次啟動安裝精靈（含資料庫連線設定） |
 | `/login` | 管理員登入 |
+| `/change-password` | 強制密碼變更（首次登入） |
 | `/dashboard` | 訊息量統計儀表板 |
 | `/users` | LINE 用戶列表、AI 模式切換 |
 | `/messages` | 訊息紀錄查詢、CSV 匯出 |
 | `/schedules` | 排程管理 |
 | `/knowledge` | 知識庫 PDF 上傳管理 |
+| `/mcp` | MCP Server 管理 |
 | `/settings` | LLM / RAG / LINE 串接設定、密碼修改、速率限制 |

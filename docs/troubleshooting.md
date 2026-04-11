@@ -41,19 +41,7 @@ info: AI reply check: user=Uxxxxx, mode=ai, active=true, result=true
 - Console 出現 500 錯誤
 
 ### 根因
-Knex.js 的 `query.clone()` 會複製整個 query chain 包含 `orderBy`，但 PostgreSQL 不允許在 `COUNT()` 查詢中使用 `ORDER BY`：
-
-```
-ERROR: column "line_users.last_message_at" must appear in the GROUP BY clause
-       or be used in an aggregate function
-```
-
-### 錯誤程式碼
-```javascript
-// ❌ orderBy 被 clone 到 count 查詢
-let query = db('line_users').orderBy('last_message_at', 'desc');
-const total = await query.clone().count('id as count').first();  // 報錯！
-```
+Knex.js 的 `query.clone()` 會複製整個 query chain 包含 `orderBy`，但 PostgreSQL 不允許在 `COUNT()` 查詢中使用 `ORDER BY`。
 
 ### 正確程式碼
 ```javascript
@@ -63,72 +51,29 @@ const total = await query.clone().count('id as count').first();
 const users = await query.clone().select('*').orderBy('last_message_at', 'desc').limit(limit).offset(offset);
 ```
 
-### 影響範圍
-- `lineUsers.controller.js` — 用戶列表
-- `messages.controller.js` — 訊息列表
-
 ---
 
 ## 3. Webhook 回傳 `Cannot GET /api/webhook/line`
 
-### 症狀
-- 瀏覽器訪問 webhook URL 得到 404
-- LINE Console Verify 失敗
-
-### 根因
-Webhook route 原本只有 `POST` handler，沒有 `GET`。
-
 ### 修復
-加上 GET handler 用於健康檢查 + LINE Console 的瀏覽器驗證：
-```javascript
-router.get('/line', (req, res) => {
-  res.json({ status: 'ok', message: 'LINE Webhook endpoint is active.' });
-});
-```
+加上 GET handler 用於健康檢查 + LINE Console 的瀏覽器驗證。
 
 ---
 
-## 4. Cloudflare Tunnel 訪問得到空白頁（Cannot GET /）
-
-### 症狀
-- `https://line-bot.openclaw-gb.com/` 回傳 `Cannot GET /`
-- API 端點正常
+## 4. Cloudflare Tunnel 訪問得到空白頁
 
 ### 根因
-Express 只提供 API 路由，React SPA 在 Vite dev server (port 5173) 上，外網只看得到 port 3000。
+Express 只提供 API 路由，React SPA 在 Vite dev server 上，外網只看得到 Express port。
 
 ### 修復
-1. 先建構前端：`cd client && npm run build`
-2. Express 加入靜態檔 serving + SPA fallback：
-```javascript
-const clientDist = path.join(__dirname, '../../client/dist');
-if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) return next();
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
-```
-
-### 重要
-每次修改前端程式碼後，如果要透過 Cloudflare Tunnel 對外看到變更，需要重新 `npm run build`。本地開發用 Vite dev server (port 5173) 不需要。
+先建構前端：`cd client && npm run build`，Express 自動從 `client/dist/` 提供靜態檔。
 
 ---
 
-## 5. Port 3000 被佔用（EADDRINUSE）
+## 5. Port 被佔用（EADDRINUSE）
 
-### 症狀
-```
-Error: listen EADDRINUSE: address already in use :::3000
-```
-
-### 修復
 ```bash
-# 找出並終止佔用 port 的程序
-lsof -i :3000 -t | xargs kill -9
-
-# 重新啟動
+lsof -i :8080 -t | xargs kill -9
 cd server && npm run dev
 ```
 
@@ -136,78 +81,33 @@ cd server && npm run dev
 
 ## 6. Webhook 簽名驗證失敗（401 Invalid Signature）
 
-### 症狀
-- LINE Console Verify 失敗
-- Server log 顯示 `Invalid LINE signature`
-
-### 可能原因
-
 | 原因 | 解法 |
 |------|------|
 | Channel Secret 未設定 | 在 Settings 頁面填入並儲存 |
 | Channel Secret 不正確 | 重新從 LINE Developers Console 複製 |
-| Body parsing 衝突 | Webhook route 使用 `express.raw()` 取得原始 body，全域 `express.json()` 必須跳過 webhook 路徑 |
-
-### Body parsing 機制
-```javascript
-// index.js — webhook 路徑跳過 JSON parsing
-app.use((req, res, next) => {
-  if (req.path === '/api/webhook/line') {
-    next();  // 不做 JSON parse
-  } else {
-    express.json()(req, res, next);
-  }
-});
-
-// webhook.routes.js — 自行處理 raw body
-router.post('/line', express.raw({ type: '*/*' }), ...);
-```
-
-> `express.raw` 的 content-type 必須設為 `'*/*'`，不能用 `'application/json'`，因為 LINE 有時候的 content-type 不完全是 `application/json`。
+| Body parsing 衝突 | Webhook route 使用 `express.raw()` 取得原始 body |
 
 ---
 
-## 7. LLM 不回覆（無 AI 回應）
+## 7. LLM 不回覆
 
 ### 除錯步驟
-
-1. **檢查 server log**：是否有 `LLM error:` 開頭的錯誤
-2. **測試 LLM 連線**：Settings 頁面點「測試 LLM 連線」
-3. **確認 API Key**：
-   - Gemini：需要有效的 Google AI API Key
-   - OpenAI：需要有效的 OpenAI API Key
-   - Claude：需要有效的 Anthropic API Key
-4. **確認模型名稱**：
-   - Gemini：`gemini-2.5-flash`、`gemini-2.5-pro`
-   - OpenAI：`gpt-4o`、`gpt-4o-mini`
-   - Claude：`claude-sonnet-4-20250514`
-
-### Gemini 特別注意
-Gemini 使用 OpenAI 相容端點（`openai.provider.js`），base URL 為：
-```
-https://generativelanguage.googleapis.com/v1beta/openai/
-```
-如果 Google AI API Key 無效或配額用盡，會在 `openai.provider.js` 拋出錯誤。
+1. 檢查 server log 是否有 `LLM error:` 開頭的錯誤
+2. Settings 頁面點「測試 LLM 連線」
+3. 確認 API Key 和模型名稱
 
 ---
 
 ## 8. 設定修改後沒有生效
 
 ### 原因
-`settings.service.js` 有 60 秒記憶體快取。正常情況下，透過 API 更新設定時會自動 invalidate 快取。
-
-### 但如果直接改 DB…
-直接用 SQL 改 `system_settings` 表的值，快取不會更新，需要等 60 秒或重啟 server。
+`settings.service.js` 有 60 秒記憶體快取。透過 API 更新會自動 invalidate，但直接改 DB 需要等 60 秒或重啟 server。
 
 ---
 
 ## 9. 知識庫上傳中文檔名失敗
 
-### 根因
-Google Gemini File Upload API 不接受 HTTP Header 中的非 ASCII 字元。
-
-### 已內建解法
-上傳前自動將檔案複製到 `/tmp/` 並改為 ASCII 安全檔名（`upload_<timestamp>.pdf`），上傳完成後刪除暫存檔。
+已內建解法：上傳前自動改為 ASCII 安全檔名。
 
 ---
 
@@ -217,62 +117,95 @@ Google Gemini File Upload API 不接受 HTTP Header 中的非 ASCII 字元。
 - 登入時顯示「登入嘗試過多，請 15 分鐘後再試」
 - API 回傳 429 狀態碼
 
-### 根因
-`express-rate-limit` 偵測到同一 IP 在 15 分鐘內嘗試登入超過 10 次。
-
 ### 解法
 1. **等待 15 分鐘**後重試
-2. **重啟 server**（速率限制使用記憶體儲存，重啟後計數器重設）：
-   ```bash
-   # Ctrl+C 停止 server，然後重新啟動
-   cd server && npm run dev
-   ```
+2. **重新部署**（速率限制使用記憶體儲存，重啟後計數器重設）
 
-### 相關 Log
-Server log 會記錄速率限制觸發事件：
-```
-warn: Login rate limit exceeded: ip=::1, email=admin@example.com
-```
+> **Setup 模式下自動跳過 rate limit**，不會影響初始設定精靈。
 
 ---
 
 ## 11. LINE 用戶被速率限制
 
+### 解法
+在管理後台 **系統設定** → **對話設定** → **速率限制** 調整上限，設為 0 則不限制。
+
+---
+
+## 12. Zeabur 部署 — 502 Bad Gateway
+
 ### 症狀
-- LINE 用戶傳訊後 Bot 回覆「您發送訊息太頻繁，請 X 分鐘後再試」
+部署後立即崩潰，返回 502
 
-### 根因
-該用戶在時間窗口內的 AI 回覆數達到上限。
+### 可能原因與解法
 
-### 解法
-1. 在管理後台 **系統設定** → **對話設定** → **速率限制** 調整上限
-2. 設為 0 則完全不限制
-
-### 相關 Log
-```
-info: Rate limit hit: user=Uxxxxx, used=10/10 in 5min
-```
+| 原因 | 解法 |
+|------|------|
+| `Cannot find module '/src/index.js'` | 確認根目錄 `package.json` 有 `"start": "cd server && node src/index.js"` |
+| 檔案系統唯讀導致 `.env` 寫入失敗 | `ensureEnv.js` 已處理：env vars 已設定時跳過所有 file I/O |
+| PORT 不正確 | Zeabur 會注入 `PORT` 環境變數，預設 fallback 為 8080 |
 
 ---
 
-## 12. 密碼修改後舊密碼仍可登入
+## 13. Zeabur 部署 — Not allowed by CORS
+
+### 症狀
+靜態資源（JS/CSS）被 CORS 擋：`Not allowed by CORS` on `/assets/index-*.js`
 
 ### 根因
-瀏覽器快取了舊的 JWT Token（7 天有效期）。在 Token 過期前，已登入的 Session 仍然有效。
+靜態檔案放在 CORS middleware 之後被擋。
 
-### 解法
-1. 在前端**登出**（清除 Token）
-2. 用新密碼重新登入
-
-> 這不是安全漏洞 — 密碼修改會立即生效於新的登入嘗試，但不會撤銷已發出的 JWT Token。
+### 已修復
+- 靜態檔案 serve（`express.static`）移到 CORS middleware 之前
+- CORS 改為 `cors()` 允許所有來源（前後端同域部署不需要嚴格 CORS）
 
 ---
 
-## 13. 開發環境常用指令
+## 14. Zeabur 部署 — The server does not support SSL connections
+
+### 症狀
+資料庫連線失敗：`The server does not support SSL connections`
+
+### 根因
+程式碼硬寫 `ssl: { rejectUnauthorized: false }`，但 Zeabur PostgreSQL 不支援 SSL。
+
+### 已修復
+移除硬寫的 SSL 設定，直接使用連線字串。如需 SSL，在連線字串尾巴加 `?sslmode=require`。
+
+---
+
+## 15. Setup 精靈 — 資料庫已設定但連線失敗
+
+### 症狀
+Zeabur 已注入 `DATABASE_URL`，但 Setup 精靈 Step 1 顯示「未設定」
+
+### 根因
+原本只有 `setupMode === true` 才顯示 DATABASE_URL 輸入框，但 DATABASE_URL 已存在時 setupMode 是 false，即使連不上也無法重新設定。
+
+### 已修復
+改為**只要資料庫未連線就顯示輸入框**（`setupMode || !database.configured`）。後端也允許在 DB 連線失敗時重新設定。
+
+---
+
+## 16. Setup 精靈 — 登入嘗試過多
+
+### 症狀
+在 Setup 精靈 Step 2 多次嘗試後被 rate limit 擋：「登入嘗試過多，請 15 分鐘後再試」
+
+### 根因
+`express-rate-limit` 在 Setup 期間也生效，加上 Zeabur 反向代理讓所有請求共用同一個內部 IP。
+
+### 已修復
+1. Setup 模式下自動跳過 rate limit（`skip: () => process.env.SETUP_MODE === 'true'`）
+2. 加上 `app.set('trust proxy', 1)` 讓 rate limiter 使用真實 IP
+
+---
+
+## 開發環境常用指令
 
 ```bash
 # 查看 server 是否運行
-curl http://localhost:3000/health
+curl http://localhost:8080/health
 
 # 查看資料庫設定
 cd server && node -e "
@@ -293,7 +226,4 @@ const db = require('./src/config/db');
   process.exit(0);
 })();
 "
-
-# 清除快取（重啟 server）
-# nodemon 會在檔案變動時自動重啟，或手動 Ctrl+C 後重新 npm run dev
 ```

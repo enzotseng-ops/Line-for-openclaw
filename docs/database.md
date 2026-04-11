@@ -2,7 +2,9 @@
 
 PostgreSQL 14+，使用 Knex.js ORM。Migration 檔案位於 `server/src/migrations/`。
 
-## 6 張表總覽
+啟動時自動執行 migration（`db.migrate.latest()`），部署後不需要手動跑。
+
+## 8 張表總覽
 
 | 表名 | 說明 | Migration |
 |------|------|-----------|
@@ -12,6 +14,10 @@ PostgreSQL 14+，使用 Knex.js ORM。Migration 檔案位於 `server/src/migrati
 | `schedule_rules` | AI 服務時間排程 | `20260314_04` |
 | `system_settings` | 系統設定 KV 表 | `20260314_05` |
 | `uploaded_files` | 知識庫上傳檔案 | `20260314_06` |
+| `mcp_servers` | MCP Server 設定 | `20260322_01` |
+| *(users 擴充)* | 首次登入強制改密碼 | `20260315_01` |
+
+> `mcp_servers` 的 `auth_type` 欄位由 `20260322_02` 追加。
 
 ---
 
@@ -25,10 +31,9 @@ PostgreSQL 14+，使用 Knex.js ORM。Migration 檔案位於 `server/src/migrati
 | `email` | VARCHAR(255) | UNIQUE, NOT NULL | - | 登入帳號 |
 | `password_hash` | VARCHAR(255) | NOT NULL | - | bcrypt 密碼雜湊 |
 | `name` | VARCHAR(100) | | NULL | 管理員名稱 |
+| `requires_password_change` | BOOLEAN | | false | 首次登入是否強制改密碼 |
 | `created_at` | TIMESTAMP | | `NOW()` | 建立時間 |
 | `updated_at` | TIMESTAMP | | `NOW()` | 更新時間 |
-
-Seed 預設管理員：`admin@example.com` / `admin123456`
 
 ---
 
@@ -128,12 +133,31 @@ Seed 預設管理員：`admin@example.com` / `admin123456`
 
 ---
 
+### 7. `mcp_servers`
+
+| 欄位 | 型別 | 約束 | 預設值 | 說明 |
+|------|------|------|--------|------|
+| `id` | INTEGER | PK, AUTO_INCREMENT | - | 主鍵 |
+| `name` | VARCHAR(100) | NOT NULL | - | 伺服器名稱 |
+| `transport_type` | VARCHAR(20) | | `'sse'` | 傳輸方式：`sse` / `streamable-http` |
+| `url` | TEXT | NOT NULL | - | 伺服器 URL |
+| `api_key` | TEXT | | NULL | API Key（AES-256-GCM 加密） |
+| `custom_headers` | TEXT | | NULL | 自訂標頭（AES-256-GCM 加密 JSON） |
+| `auth_type` | VARCHAR(20) | | `'bearer'` | 認證方式：`bearer` / `x-api-key` |
+| `is_enabled` | BOOLEAN | | `true` | 是否啟用 |
+| `tools_cache` | TEXT | | NULL | 工具列表快取（JSON） |
+| `last_connected_at` | TIMESTAMP | | NULL | 最後連線時間 |
+| `created_at` | TIMESTAMP | | `NOW()` | 建立時間 |
+| `updated_at` | TIMESTAMP | | `NOW()` | 更新時間 |
+
+---
+
 ## 資料庫管理指令
 
 ```bash
 cd server
 
-# 執行所有未執行的 migration
+# 執行所有未執行的 migration（啟動時也會自動執行）
 npm run migrate
 
 # 回滾最近一次 migration

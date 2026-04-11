@@ -41,7 +41,7 @@ app.use(cors({
 
     // Wildcard subdomain patterns from CORS_ALLOWED_ORIGINS env
     // e.g. CORS_ALLOWED_ORIGINS=*.openclaw-gb.com,*.example.com
-    const patterns = (process.env.CORS_ALLOWED_ORIGINS || '*.openclaw-gb.com')
+    const patterns = (process.env.CORS_ALLOWED_ORIGINS || '*.openclaw-gb.com,*.zeabur.app')
       .split(',')
       .map((p) => p.trim())
       .filter(Boolean);
